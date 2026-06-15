@@ -26,6 +26,12 @@ services:
     environment:
       TFNSW_API_KEY: ${TFNSW_API_KEY:?err}
       DATABASE_URL: ${DATABASE_URL:?err}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   scheduler:
     image: ghcr.io/domgrimm/nsw-bus-delays-scheduler:${TAG:-latest}
