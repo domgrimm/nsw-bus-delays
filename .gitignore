@@ -1,0 +1,44 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node/Next.js
+node_modules/
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+postgres_data/
+
+# AI / Agent
+AGENTS.md
+IMPLEMENTATION.md
+.opencode/
+.agents/
+.claude/
+.cursor/
+.gemini/
+.continue/
+.windsurf/
+.github/copilot-instructions.md
+SKILL.md*
+*.skill.md
+
+# Impeccable design
+PRODUCT.md
+DESIGN.md
+.impeccable/

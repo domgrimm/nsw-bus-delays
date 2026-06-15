@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nswbus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nswbus}
+      POSTGRES_DB: ${POSTGRES_DB:-nswbusdelays}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nswbus} -d ${POSTGRES_DB:-nswbusdelays}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      TFNSW_API_KEY: ${TFNSW_API_KEY:?err}
+      DATABASE_URL: ${DATABASE_URL:?err}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  scheduler:
+    build:
+      context: ./scheduler
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      TFNSW_API_KEY: ${TFNSW_API_KEY:?err}
+      DATABASE_URL: ${DATABASE_URL:?err}
+      POLLING_INTERVAL_SECONDS: ${POLLING_INTERVAL_SECONDS:-60}
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  postgres_data:
