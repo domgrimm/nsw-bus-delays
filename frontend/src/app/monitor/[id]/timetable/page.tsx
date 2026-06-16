@@ -27,6 +27,43 @@ const SERVICE_LABELS: Record<ServiceType, string> = {
   sunday: "Sundays/Holidays",
 };
 
+function formatTime(isoString: string): string {
+  const d = new Date(isoString);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Sydney",
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)!.value;
+  return `${get("day")}/${get("month")}/${get("year")} ${get("hour")}:${get("minute")}:${get("second")}`;
+}
+
+function formatStatus(status: string): string {
+  return status
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function badgeVariant(status: string): string {
+  const normalized = status.toLowerCase();
+  if (normalized === "delayed") return "danger";
+  if (normalized === "early") return "primary";
+  if (normalized === "cancelled") return "muted";
+  return "success";
+}
+
+function delayVariant(seconds: number): "success" | "warning" | "danger" {
+  if (seconds > 120) return "danger";
+  if (seconds > 0) return "warning";
+  return "success";
+}
+
 function formatX(time: string): string {
   const d = new Date(time);
   return d.toLocaleString(undefined, {
@@ -35,10 +72,6 @@ function formatX(time: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge badge--${status}`}>{status.replace("_", " ")}</span>;
 }
 
 function PeriodSelector({
@@ -296,7 +329,7 @@ export default function TimetableComparisonPage() {
                     <div className="panel">
                       <h3 className="panel-title">Recent Arrivals ({stats.total_arrivals} total)</h3>
                       <div style={{ overflowX: "auto" }}>
-                        <table className="arrival-table">
+                        <table>
                           <thead>
                             <tr>
                               <th>Scheduled</th>
@@ -308,27 +341,15 @@ export default function TimetableComparisonPage() {
                           <tbody>
                             {stats.arrivals.slice(0, 30).map((r) => (
                               <tr key={r.id}>
-                                <td>
-                                  {new Date(r.scheduled_arrival).toLocaleString(undefined, {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
+                                <td>{formatTime(r.scheduled_arrival)}</td>
+                                <td>{formatTime(r.actual_arrival)}</td>
+                                <td className={`delay-cell delay-cell--${delayVariant(r.delay_seconds)}`}>
+                                  {formatDelay(r.delay_seconds, { signed: true })}
                                 </td>
                                 <td>
-                                  {new Date(r.actual_arrival).toLocaleString(undefined, {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </td>
-                                <td className={r.delay_seconds > 120 ? "status-danger" : r.delay_seconds < -120 ? "text-muted" : "status-success"}>
-                                  {formatDelay(r.delay_seconds)}
-                                </td>
-                                <td>
-                                  <StatusBadge status={r.status} />
+                                  <span className={`status-badge status-${badgeVariant(r.status)}`}>
+                                    {formatStatus(r.status)}
+                                  </span>
                                 </td>
                               </tr>
                             ))}

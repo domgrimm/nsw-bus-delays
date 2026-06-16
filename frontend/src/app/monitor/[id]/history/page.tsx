@@ -28,7 +28,7 @@ export default function MonitorHistoryPage() {
   return (
     <div>
       <Link href={`/monitor/${id}`} className="page-header__back">
-        &larr; Back to Monitor
+        &larr; Back to Dashboard
       </Link>
       <h1 style={{ marginTop: "var(--space-sm)" }}>Arrival History</h1>
       <ArrivalTable data={arrivals} />
