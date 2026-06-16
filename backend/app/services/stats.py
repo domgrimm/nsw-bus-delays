@@ -111,7 +111,7 @@ def compute_stats(
 
     now = datetime.now(timezone.utc)
     if period == "day":
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        start = now - timedelta(days=1)
     elif period == "week":
         start = now - timedelta(days=7)
     elif period == "month":
