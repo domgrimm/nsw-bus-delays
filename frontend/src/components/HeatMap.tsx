@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useLayoutEffect } from "react";
 import type { HeatmapCell } from "@/types";
 import { formatDelay } from "@/lib/format";
 
@@ -67,6 +67,23 @@ function HeatMapGrid({
 }) {
   const [hovered, setHovered] = useState<HeatmapCell | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!hovered || !tooltipRef.current) return;
+    const el = tooltipRef.current;
+    el.style.left = `${mousePos.x + 12}px`;
+    el.style.top = `${mousePos.y - 10}px`;
+    const rect = el.getBoundingClientRect();
+    if (rect.right > window.innerWidth - 8) {
+      el.style.left = `${mousePos.x - rect.width - 12}px`;
+    }
+    if (rect.bottom > window.innerHeight - 8) {
+      el.style.top = `${mousePos.y - rect.height - 10}px`;
+    }
+    if (parseInt(el.style.left) < 8) el.style.left = "8px";
+    if (parseInt(el.style.top) < 8) el.style.top = "8px";
+  }, [hovered, mousePos]);
 
   const lookup = new Map<string, HeatmapCell>();
   for (const cell of data) {
@@ -170,7 +187,7 @@ function HeatMapGrid({
       </div>
 
       {hovered && (
-        <div className="heatmap-tooltip" style={{ position: "fixed", left: mousePos.x + 12, top: mousePos.y - 10 }}>
+        <div ref={tooltipRef} className="heatmap-tooltip" style={{ position: "fixed", left: mousePos.x + 12, top: mousePos.y - 10 }}>
           <div className="heatmap-tooltip__title">
             {dayLabels[hovered.day_of_week] || DAY_LABELS[hovered.day_of_week]},{" "}
             {HOUR_LABELS[hovered.hour_block]}–{HOUR_LABELS[hovered.hour_block + 1] || "00:00"}
