@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas import StopResponse
 from app.services.gtfs import get_route_stops as gtfs_route_stops
+from app.services.gtfs import get_timetable as gtfs_timetable
 from app.tf_nsw_client import TfNSWClient
 
 router = APIRouter(tags=["stops"])
@@ -74,6 +75,21 @@ async def get_gtfs_route_stops(route_number: str):
     try:
         stops = await gtfs_route_stops(route_number)
         return {"stops": stops}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"GTFS error: {e}")
+
+
+@router.get("/gtfs/routes/{route_number}/timetable")
+async def get_gtfs_timetable(route_number: str, stop_id: str = Query(...)):
+    try:
+        timetable = await gtfs_timetable(route_number, stop_id)
+        return {
+            "route_number": route_number,
+            "stop_id": stop_id,
+            "weekday": timetable.get("weekday", []),
+            "saturday": timetable.get("saturday", []),
+            "sunday": timetable.get("sunday", []),
+        }
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"GTFS error: {e}")
 

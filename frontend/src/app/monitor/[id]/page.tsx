@@ -100,6 +100,10 @@ function DashboardInner() {
             <Link href={`/monitor/${id}/history`} className="text-link">
               View History
             </Link>
+            {" "}&middot;{" "}
+            <Link href={`/monitor/${id}/timetable`} className="text-link">
+              Timetable Comparison
+            </Link>
           </p>
         </div>
 
