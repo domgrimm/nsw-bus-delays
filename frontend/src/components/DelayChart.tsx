@@ -11,14 +11,7 @@ import {
 } from "recharts";
 
 import type { ArrivalRecord } from "@/types";
-
-function formatDelay(seconds: number): string {
-  const sign = seconds < 0 ? "-" : "";
-  const abs = Math.abs(Math.round(seconds));
-  const m = Math.floor(abs / 60);
-  const s = abs % 60;
-  return `${sign}${m}:${s.toString().padStart(2, "0")}`;
-}
+import { formatDelay } from "@/lib/format";
 
 function formatX(time: string): string {
   const d = new Date(time);
@@ -49,11 +42,34 @@ export default function DelayChart({ data }: { data: ArrivalRecord[] }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="time" fontSize={12} interval="preserveStartEnd" />
-        <YAxis tickFormatter={(v: number) => `${Math.round(v / 60)}m`} />
-        <Tooltip formatter={(v: number) => formatDelay(v)} />
-        <Line type="monotone" dataKey="delay" stroke="#125be4" dot={false} strokeWidth={2} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+        <XAxis
+          dataKey="time"
+          fontSize={12}
+          interval="preserveStartEnd"
+          stroke="var(--color-status-muted)"
+        />
+        <YAxis
+          tickFormatter={(v: number) => `${Math.round(v / 60)}m`}
+          stroke="var(--color-status-muted)"
+        />
+        <Tooltip
+          formatter={(v: number) => formatDelay(v)}
+          contentStyle={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--rounded-sm)",
+            color: "var(--color-ink)",
+            fontSize: "0.85rem",
+          }}
+        />
+        <Line
+          type="monotone"
+          dataKey="delay"
+          stroke="var(--color-primary)"
+          dot={false}
+          strokeWidth={2}
+        />
       </LineChart>
     </ResponsiveContainer>
   );

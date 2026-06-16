@@ -2,10 +2,9 @@
 
 import { useState, useCallback } from "react";
 import type { HeatmapCell } from "@/types";
+import { formatDelay } from "@/lib/format";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-const WEEKEND_LABELS = ["Sat", "Sun"];
 const HOUR_LABELS = [
   "00:00",
   "03:00",
@@ -17,37 +16,43 @@ const HOUR_LABELS = [
   "21:00",
 ];
 
+const LEGEND_STOPS = [
+  "var(--color-delay-early-strong)",
+  "var(--color-delay-early-light)",
+  "var(--color-delay-ontime)",
+  "var(--color-delay-slight)",
+  "var(--color-delay-mild)",
+  "var(--color-delay-moderate)",
+  "var(--color-delay-high)",
+  "var(--color-delay-severe)",
+  "var(--color-delay-extreme)",
+];
+
 function delayColor(delay: number): string {
-  if (delay < -60) return "#125be4";
-  if (delay < 0) return "#6ba3f0";
-  if (delay === 0) return "#107c41";
-  if (delay <= 60) return "#5abf5a";
-  if (delay <= 120) return "#b8d94b";
-  if (delay <= 180) return "#f2e03d";
-  if (delay <= 300) return "#f5a623";
-  if (delay <= 600) return "#e06b2b";
-  if (delay <= 900) return "#c0392b";
-  return "#1a1a1a";
+  if (delay < -60) return "var(--color-delay-early-strong)";
+  if (delay < 0) return "var(--color-delay-early-light)";
+  if (delay === 0) return "var(--color-delay-ontime)";
+  if (delay <= 60) return "var(--color-delay-slight)";
+  if (delay <= 120) return "var(--color-delay-mild)";
+  if (delay <= 180) return "var(--color-delay-moderate)";
+  if (delay <= 300) return "var(--color-delay-high)";
+  if (delay <= 600) return "var(--color-delay-severe)";
+  return "var(--color-delay-extreme)";
 }
 
-function formatDelay(seconds: number): string {
-  const sign = seconds < 0 ? "-" : "";
-  const abs = Math.abs(Math.round(seconds));
-  const m = Math.floor(abs / 60);
-  const s = abs % 60;
-  return `${sign}${m}:${s.toString().padStart(2, "0")}`;
-}
+const CELL_SIZE = 32;
+const CELL_GAP = 3;
+const LEFT_PAD = 56;
+const PADDING = 8;
+const HEADER_HEIGHT = 24;
 
-const CELL_SIZE = 48;
-const CELL_GAP = 4;
-const LABEL_WIDTH = 48;
-const HEADER_HEIGHT = 28;
-const PADDING = 12;
+const GRID_LEFT = LEFT_PAD;
+const GRID_TOP = HEADER_HEIGHT + PADDING;
 
 function getSvgDims(rows: number) {
   return {
-    width: LABEL_WIDTH + 8 * (CELL_SIZE + CELL_GAP) + PADDING * 2,
-    height: HEADER_HEIGHT + rows * (CELL_SIZE + CELL_GAP) + PADDING * 2,
+    width: LEFT_PAD + 8 * (CELL_SIZE + CELL_GAP) + PADDING,
+    height: GRID_TOP + rows * (CELL_SIZE + CELL_GAP) + PADDING,
   };
 }
 
@@ -60,19 +65,32 @@ function HeatMapGrid({
   dayLabels: string[];
   rowOffset: number;
 }) {
-  const [selected, setSelected] = useState<HeatmapCell | null>(null);
+  const [hovered, setHovered] = useState<HeatmapCell | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   const lookup = new Map<string, HeatmapCell>();
   for (const cell of data) {
     lookup.set(`${cell.day_of_week}-${cell.hour_block}`, cell);
   }
 
-  const handleTap = useCallback(
-    (cell: HeatmapCell) => {
-      setSelected((prev) => (prev === cell ? null : cell));
+  const handleMouseEnter = useCallback(
+    (cell: HeatmapCell, e: React.MouseEvent) => {
+      setHovered(cell);
+      setMousePos({ x: e.clientX, y: e.clientY });
     },
     [],
   );
+
+  const handleMouseMove = useCallback(
+    (_cell: HeatmapCell, e: React.MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    },
+    [],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setHovered(null);
+  }, []);
 
   const dims = getSvgDims(dayLabels.length);
 
@@ -81,16 +99,18 @@ function HeatMapGrid({
       <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <svg
           viewBox={`0 0 ${dims.width} ${dims.height}`}
-          style={{ display: "block", width: "100%", minWidth: dims.width, height: "auto" }}
+          style={{ display: "block", width: "100%", height: "auto" }}
+          role="grid"
+          aria-label="Delay heat map"
         >
           {HOUR_LABELS.map((label, i) => (
             <text
               key={`hdr-${i}`}
-              x={LABEL_WIDTH + i * (CELL_SIZE + CELL_GAP) + CELL_SIZE / 2 + PADDING}
-              y={PADDING + HEADER_HEIGHT - 8}
+              x={GRID_LEFT + i * (CELL_SIZE + CELL_GAP) + CELL_SIZE / 2}
+              y={GRID_TOP - 6}
               textAnchor="middle"
               fontSize={10}
-              fill="#8a9099"
+              fill="var(--color-status-muted)"
               fontWeight={600}
             >
               {label}
@@ -100,11 +120,11 @@ function HeatMapGrid({
           {dayLabels.map((label: string, row: number) => (
             <g key={`row-${row}`}>
               <text
-                x={PADDING}
-                y={PADDING + HEADER_HEIGHT + row * (CELL_SIZE + CELL_GAP) + CELL_SIZE / 2 + 4}
+                x={LEFT_PAD - 4}
+                y={GRID_TOP + row * (CELL_SIZE + CELL_GAP) + CELL_SIZE / 2 + 1}
                 textAnchor="end"
                 fontSize={11}
-                fill="#191c1f"
+                fill="var(--color-ink)"
                 fontWeight={600}
               >
                 {label}
@@ -114,9 +134,9 @@ function HeatMapGrid({
                 const cell = lookup.get(key);
                 const delay = cell ? cell.average_delay_seconds : 0;
                 const hasData = !!cell;
-                const isSelected = selected === cell;
-                const x = LABEL_WIDTH + col * (CELL_SIZE + CELL_GAP) + PADDING;
-                const y = PADDING + HEADER_HEIGHT + row * (CELL_SIZE + CELL_GAP);
+                const isHovered = hovered === cell;
+                const x = GRID_LEFT + col * (CELL_SIZE + CELL_GAP);
+                const y = GRID_TOP + row * (CELL_SIZE + CELL_GAP);
 
                 return (
                   <g key={`cell-${row}-${col}`}>
@@ -125,22 +145,21 @@ function HeatMapGrid({
                       y={y}
                       width={CELL_SIZE}
                       height={CELL_SIZE}
-                      rx={3}
-                      fill={hasData ? delayColor(delay) : "#e8e9eb"}
-                      stroke={isSelected ? "#191c1f" : "none"}
-                      strokeWidth={isSelected ? 2.5 : 0}
+                      rx={4}
+                      fill={hasData ? delayColor(delay) : "var(--color-border)"}
+                      stroke={isHovered ? "var(--color-ink)" : "none"}
+                      strokeWidth={isHovered ? 2.5 : 0}
                       style={{ cursor: hasData ? "pointer" : "default" }}
-                      onClick={() => hasData && cell && handleTap(cell)}
-                      role="button"
+                      onMouseEnter={(e) => hasData && cell && handleMouseEnter(cell, e)}
+                      onMouseMove={(e) => hasData && cell && handleMouseMove(cell, e)}
+                      onMouseLeave={handleMouseLeave}
+                      role="gridcell"
                       tabIndex={hasData ? 0 : -1}
                       aria-label={
                         hasData && cell
                           ? `${label} ${HOUR_LABELS[col]}–${HOUR_LABELS[col + 1] || "00:00"}, avg delay ${formatDelay(delay)}, ${cell.count} arrivals`
                           : `No data`
                       }
-                      onKeyDown={(e) => {
-                        if ((e.key === "Enter" || e.key === " ") && hasData && cell) handleTap(cell);
-                      }}
                     />
                   </g>
                 );
@@ -150,35 +169,43 @@ function HeatMapGrid({
         </svg>
       </div>
 
-      {selected && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            marginTop: "0.5rem",
-            background: "#191c1f",
-            color: "#fff",
-            padding: "0.6rem 1rem",
-            borderRadius: 6,
-            fontSize: "0.85rem",
-            lineHeight: 1.5,
-            whiteSpace: "nowrap",
-            zIndex: 10,
-            pointerEvents: "none",
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: "0.15rem" }}>
-            {DAY_LABELS[selected.day_of_week]},{" "}
-            {HOUR_LABELS[selected.hour_block]}–{HOUR_LABELS[selected.hour_block + 1] || "00:00"}
+      {hovered && (
+        <div className="heatmap-tooltip" style={{ position: "fixed", left: mousePos.x + 12, top: mousePos.y - 10 }}>
+          <div className="heatmap-tooltip__title">
+            {dayLabels[hovered.day_of_week] || DAY_LABELS[hovered.day_of_week]},{" "}
+            {HOUR_LABELS[hovered.hour_block]}–{HOUR_LABELS[hovered.hour_block + 1] || "00:00"}
           </div>
-          <div>Avg delay: {formatDelay(selected.average_delay_seconds)}</div>
-          <div>Arrivals: {selected.count}</div>
+          <div>Avg delay: {formatDelay(hovered.average_delay_seconds)}</div>
+          <div>Arrivals: {hovered.count}</div>
         </div>
       )}
     </div>
   );
+}
+
+function aggregateByGroup(
+  weekdayData: HeatmapCell[],
+  weekendData: HeatmapCell[],
+): HeatmapCell[] {
+  function groupAverage(cells: HeatmapCell[], groupDow: number): HeatmapCell[] {
+    const byHour = new Map<number, { sumDelay: number; totalCount: number }>();
+    for (const c of cells) {
+      const prev = byHour.get(c.hour_block) || { sumDelay: 0, totalCount: 0 };
+      prev.sumDelay += c.average_delay_seconds * c.count;
+      prev.totalCount += c.count;
+      byHour.set(c.hour_block, prev);
+    }
+    return Array.from(byHour.entries()).map(([hb, acc]) => ({
+      day_of_week: groupDow,
+      hour_block: hb,
+      average_delay_seconds: acc.totalCount > 0 ? acc.sumDelay / acc.totalCount : 0,
+      count: acc.totalCount,
+    }));
+  }
+  return [
+    ...groupAverage(weekdayData, 0),
+    ...groupAverage(weekendData, 1),
+  ];
 }
 
 export default function HeatMap({
@@ -191,60 +218,46 @@ export default function HeatMap({
   weekendData?: HeatmapCell[];
 }) {
   const hasSplit = weekdayData && weekdayData.length > 0 && weekendData && weekendData.length > 0;
-  const [view, setView] = useState<"all" | "weekday" | "weekend">("all");
+  const [view, setView] = useState<"all" | "grouped">("all");
 
   return (
     <div>
-      {hasSplit && (
-        <div className="segmented-control" style={{ marginBottom: "0.75rem" }}>
-          {(["all", "weekday", "weekend"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              disabled={v === view}
-              className={v === view ? "active" : ""}
-            >
-              {v === "all" ? "All Days" : v === "weekday" ? "Weekdays" : "Weekends"}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="segmented-control" style={{ marginBottom: "0.75rem" }}>
+        <button
+          onClick={() => setView("all")}
+          disabled={view === "all"}
+          className={view === "all" ? "active" : ""}
+        >
+          All Days
+        </button>
+        <button
+          onClick={() => setView("grouped")}
+          disabled={view === "grouped" || !hasSplit}
+          className={view === "grouped" ? "active" : ""}
+        >
+          Weekdays &amp; Weekends
+        </button>
+      </div>
 
       {view === "all" && <HeatMapGrid data={data} dayLabels={DAY_LABELS} rowOffset={0} />}
-      {view === "weekday" && hasSplit && (
-        <HeatMapGrid data={weekdayData!} dayLabels={WEEKDAY_LABELS} rowOffset={0} />
-      )}
-      {view === "weekend" && hasSplit && (
-        <HeatMapGrid data={weekendData!} dayLabels={WEEKEND_LABELS} rowOffset={5} />
+      {view === "grouped" && hasSplit && (
+        <HeatMapGrid
+          data={aggregateByGroup(weekdayData!, weekendData!)}
+          dayLabels={["Weekdays", "Weekends"]}
+          rowOffset={0}
+        />
       )}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.35rem",
-          marginTop: "0.75rem",
-          fontSize: "0.7rem",
-          color: "#8a9099",
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ marginRight: "0.25rem" }}>Early</span>
-        {["#125be4", "#6ba3f0", "#107c41", "#5abf5a", "#b8d94b", "#f5a623", "#e06b2b", "#c0392b", "#1a1a1a"].map(
-          (c) => (
-            <span
-              key={c}
-              style={{
-                display: "inline-block",
-                width: 14,
-                height: 14,
-                borderRadius: 2,
-                background: c,
-              }}
-            />
-          )
-        )}
-        <span style={{ marginLeft: "0.25rem" }}>Late</span>
+      <div className="heatmap-legend">
+        <span className="heatmap-legend__end">Early</span>
+        {LEGEND_STOPS.map((c) => (
+          <span
+            key={c}
+            className="heatmap-legend__swatch"
+            style={{ background: c }}
+          />
+        ))}
+        <span className="heatmap-legend__end">Late</span>
       </div>
     </div>
   );

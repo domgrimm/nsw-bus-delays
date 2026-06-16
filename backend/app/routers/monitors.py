@@ -10,12 +10,7 @@ from app.schemas import (
     MonitorCreate,
     MonitorResponse,
 )
-from app.services.stats import (
-    compute_bunching,
-    compute_mock_bunching,
-    compute_mock_stats,
-    compute_stats,
-)
+from app.services.stats import compute_bunching, compute_stats
 from app.tf_nsw_client import TfNSWClient
 
 router = APIRouter(tags=["monitors"])
@@ -131,91 +126,24 @@ async def delete_monitor(monitor_id: str, db: Session = Depends(get_db)):
 async def get_monitor_stats(
     monitor_id: str,
     period: str = Query("day", pattern="^(day|week|month|all_time)$"),
-    mock: bool = Query(False),
     db: Session = Depends(get_db),
 ):
     try:
-        if mock:
-            return compute_mock_stats(monitor_id, period)
         return compute_stats(db, monitor_id, period)
     except ValueError:
         raise HTTPException(status_code=404, detail="Monitor not found")
-
-
-MOCK_ROUTES = [
-    {"route_id": "370", "route_number": "370", "name": "Coogee to Glebe Point", "stop_id": "200013", "stop_name": "Town Hall Station, Park St"},
-    {"route_id": "333", "route_number": "333", "name": "Circular Quay to North Bondi", "stop_id": "200014", "stop_name": "Wynyard Station, Clarence St"},
-    {"route_id": "610X", "route_number": "610X", "name": "Castle Hill to City", "stop_id": "200017", "stop_name": "Parramatta Station"},
-    {"route_id": "B1", "route_number": "B1", "name": "Mona Vale to City", "stop_id": "200020", "stop_name": "Strathfield Station"},
-]
 
 
 @router.get("/monitors/{monitor_id}/bunching")
 async def get_monitor_bunching(
     monitor_id: str,
     period: str = Query("week", pattern="^(day|week|month|all_time)$"),
-    mock: bool = Query(False),
     db: Session = Depends(get_db),
 ):
     try:
-        if mock:
-            return compute_mock_bunching(monitor_id, period)
         return compute_bunching(db, monitor_id, period)
     except ValueError:
         raise HTTPException(status_code=404, detail="Monitor not found")
-
-
-@router.get("/mock/health")
-async def mock_health():
-    return {"status": "ok", "mock_data_available": True, "routes": [r["route_id"] for r in MOCK_ROUTES]}
-
-
-@router.get("/mock/routes")
-async def mock_routes():
-    return MOCK_ROUTES
-
-
-@router.post("/mock/generate")
-async def generate_mock_monitors(db: Session = Depends(get_db)):
-    created = []
-    for r in MOCK_ROUTES:
-        stop = db.query(BusStop).filter(BusStop.stop_id == r["stop_id"]).first()
-        if not stop:
-            stop = BusStop(
-                stop_id=r["stop_id"],
-                name=r["stop_name"],
-                latitude=-33.87,
-                longitude=151.20,
-            )
-            db.add(stop)
-            db.flush()
-
-        route = db.query(BusRoute).filter(BusRoute.route_id == r["route_id"]).first()
-        if not route:
-            route = BusRoute(
-                route_id=r["route_id"],
-                route_number=r["route_number"],
-                name=r["name"],
-            )
-            db.add(route)
-            db.flush()
-
-        existing = (
-            db.query(MonitoredTrip)
-            .filter(MonitoredTrip.stop_id == stop.id, MonitoredTrip.route_id == route.id)
-            .first()
-        )
-        if existing:
-            created.append(str(existing.id))
-            continue
-
-        trip = MonitoredTrip(stop_id=stop.id, route_id=route.id)
-        db.add(trip)
-        db.flush()
-        created.append(str(trip.id))
-
-    db.commit()
-    return {"monitor_ids": created}
 
 
 @router.get(

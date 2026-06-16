@@ -20,7 +20,7 @@ export default function BunchingTimeline({
   data: BunchingEvent[];
 }) {
   if (data.length === 0) {
-    return <p>No bunching events detected in this period.</p>;
+    return <p className="muted">No bunching events detected in this period.</p>;
   }
 
   const chartData = data.map((e) => ({
@@ -35,7 +35,7 @@ export default function BunchingTimeline({
     <div>
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
           <XAxis
             dataKey="time"
             name="Time"
@@ -50,6 +50,7 @@ export default function BunchingTimeline({
             type="number"
             domain={["dataMin", "dataMax"]}
             fontSize={11}
+            stroke="var(--color-status-muted)"
           />
           <YAxis
             dataKey="actual_gap"
@@ -62,6 +63,7 @@ export default function BunchingTimeline({
               position: "insideLeft",
               fontSize: 11,
             }}
+            stroke="var(--color-status-muted)"
           />
           <ZAxis dataKey="scheduled_gap" range={[40, 200]} />
           <Tooltip
@@ -70,47 +72,40 @@ export default function BunchingTimeline({
               return [`${v} min`, name];
             }}
             labelFormatter={() => ""}
+            contentStyle={{
+              background: "var(--color-surface)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--rounded-sm)",
+              color: "var(--color-ink)",
+              fontSize: "0.85rem",
+            }}
           />
           <Scatter
             data={chartData}
-            fill="#da292b"
+            fill="var(--color-status-danger)"
             name="Bunching Events"
           >
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill="#da292b" />
+              <Cell key={`cell-${index}`} fill="var(--color-status-danger)" />
             ))}
           </Scatter>
         </ScatterChart>
       </ResponsiveContainer>
 
       <div style={{ marginTop: "0.75rem" }}>
-        <table
-          style={{
-            width: "100%",
-            fontSize: "0.8rem",
-            borderCollapse: "collapse",
-          }}
-        >
+        <table className="compact-table">
           <thead>
             <tr>
-              <th style={{ textAlign: "left", padding: "0.35rem 0.5rem", borderBottom: "1px solid var(--color-border)" }}>
-                Time
-              </th>
-              <th style={{ textAlign: "right", padding: "0.35rem 0.5rem", borderBottom: "1px solid var(--color-border)" }}>
-                Sched Gap
-              </th>
-              <th style={{ textAlign: "right", padding: "0.35rem 0.5rem", borderBottom: "1px solid var(--color-border)" }}>
-                Actual Gap
-              </th>
-              <th style={{ textAlign: "right", padding: "0.35rem 0.5rem", borderBottom: "1px solid var(--color-border)" }}>
-                Delay
-              </th>
+              <th>Time</th>
+              <th className="numeric">Sched Gap</th>
+              <th className="numeric">Actual Gap</th>
+              <th className="numeric">Delay</th>
             </tr>
           </thead>
           <tbody>
             {data.slice(0, 10).map((e, i) => (
               <tr key={i}>
-                <td style={{ padding: "0.35rem 0.5rem" }}>
+                <td>
                   {new Date(e.scheduled_time).toLocaleString(undefined, {
                     month: "short",
                     day: "numeric",
@@ -118,28 +113,12 @@ export default function BunchingTimeline({
                     minute: "2-digit",
                   })}
                 </td>
-                <td style={{ textAlign: "right", padding: "0.35rem 0.5rem" }}>
-                  {e.scheduled_headway_minutes.toFixed(1)}m
-                </td>
-                <td
-                  style={{
-                    textAlign: "right",
-                    padding: "0.35rem 0.5rem",
-                    color: "var(--color-status-danger)",
-                    fontWeight: 600,
-                  }}
-                >
+                <td className="numeric">{e.scheduled_headway_minutes.toFixed(1)}m</td>
+                <td className="numeric danger-text">
                   {e.actual_headway_minutes.toFixed(1)}m
                 </td>
                 <td
-                  style={{
-                    textAlign: "right",
-                    padding: "0.35rem 0.5rem",
-                    color:
-                      e.delay_minutes > 2
-                        ? "var(--color-status-danger)"
-                        : "var(--color-ink)",
-                  }}
+                  className={`numeric ${e.delay_minutes > 2 ? "danger-text" : ""}`}
                 >
                   {e.delay_minutes > 0 ? "+" : ""}
                   {e.delay_minutes.toFixed(1)}m

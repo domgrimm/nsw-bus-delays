@@ -11,13 +11,19 @@ import {
 
 import type { DelayStats } from "@/types";
 
-const COLORS = {
-  early: "#125be4",     // Transit Blue
-  on_time: "#107c41",   // Transit Green
-  delayed: "#da292b",   // Transit Red
-  cancelled: "#8a9099", // Muted Slate
+const COLORS: Record<string, string> = {
+  early: "var(--color-primary)",
+  on_time: "var(--color-status-success)",
+  delayed: "var(--color-status-danger)",
+  cancelled: "var(--color-status-muted)",
 };
 
+const LABEL_KEYS: Record<string, "early" | "on_time" | "delayed" | "cancelled"> = {
+  Early: "early",
+  "On Time": "on_time",
+  Delayed: "delayed",
+  Cancelled: "cancelled",
+};
 
 export default function StatusPieChart({ stats }: { stats: DelayStats }) {
   const data = [
@@ -28,7 +34,7 @@ export default function StatusPieChart({ stats }: { stats: DelayStats }) {
   ].filter((d) => d.value > 0);
 
   if (data.length === 0) {
-    return <p>No data</p>;
+    return <p className="muted">No data</p>;
   }
 
   return (
@@ -42,12 +48,24 @@ export default function StatusPieChart({ stats }: { stats: DelayStats }) {
           cy="50%"
           outerRadius={80}
           label
+          stroke="var(--color-surface)"
         >
           {data.map((entry) => (
-            <Cell key={entry.name} fill={COLORS[entry.name.toLowerCase() as keyof typeof COLORS] || "#ccc"} />
+            <Cell
+              key={entry.name}
+              fill={COLORS[LABEL_KEYS[entry.name] as string] ?? "var(--color-status-muted)"}
+            />
           ))}
         </Pie>
-        <Tooltip />
+        <Tooltip
+          contentStyle={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--rounded-sm)",
+            color: "var(--color-ink)",
+            fontSize: "0.85rem",
+          }}
+        />
         <Legend />
       </PieChart>
     </ResponsiveContainer>

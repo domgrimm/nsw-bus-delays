@@ -26,6 +26,10 @@ const mockStats: DelayStats = {
   on_time_percentage: 70,
   daily_breakdown: [],
   heatmap: [],
+  percentile: null,
+  arrival_distribution: [],
+  weekday_heatmap: [],
+  weekend_heatmap: [],
 };
 
 describe("SummaryCards", () => {

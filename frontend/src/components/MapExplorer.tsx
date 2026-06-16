@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import L from "leaflet";
 
 import type { BusStop } from "@/types";
 
 import "leaflet/dist/leaflet.css";
-
-let _L: any = null;
-
-async function getLeaflet(): Promise<any> {
-  if (_L) return _L;
-  _L = await import("leaflet");
-  return _L;
-}
 
 export default function MapExplorer({
   stops,
@@ -24,8 +17,8 @@ export default function MapExplorer({
   onSearchArea?: (lat: number, lng: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
   const onSelectRef = useRef(onSelect);
   const onSearchAreaRef = useRef(onSearchArea);
   const [mapReady, setMapReady] = useState(false);
@@ -37,42 +30,41 @@ export default function MapExplorer({
     if (!containerRef.current || mapRef.current) return;
     let cancelled = false;
 
-    (async () => {
-      const L = await getLeaflet();
-      if (cancelled || !containerRef.current) return;
+    delete (L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: unknown })._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+      iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    });
 
-      // Fix default icon paths (webpack breaks them)
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    const map = L.map(containerRef.current).setView([-33.87, 151.21], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap",
+    }).addTo(map);
+
+    if (onSearchAreaRef.current) {
+      const SearchControl = L.Control.extend({
+        onAdd: function () {
+          const div = L.DomUtil.create("div", "map-search-control");
+          div.innerHTML =
+            '<button style="padding:6px 12px;background:var(--color-primary);color:var(--color-surface);border:none;border-radius:var(--rounded-sm);cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap">Search this area</button>';
+          div.onclick = () => {
+            const c = map.getCenter();
+            onSearchAreaRef.current?.(c.lat, c.lng);
+          };
+          return div;
+        },
       });
+      map.addControl(new SearchControl({ position: "topright" }));
+    }
 
-      const map = L.map(containerRef.current).setView([-33.87, 151.21], 13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap",
-      }).addTo(map);
+    if (cancelled) {
+      map.remove();
+      return;
+    }
 
-      if (onSearchAreaRef.current) {
-        const SearchControl = L.Control.extend({
-          onAdd: function () {
-            const div = L.DomUtil.create("div", "map-search-control");
-            div.innerHTML =
-              '<button style="padding:6px 12px;background:var(--color-primary);color:var(--color-surface);border:none;border-radius:var(--rounded-sm);cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap">Search this area</button>';
-            div.onclick = () => {
-              const c = map.getCenter();
-              onSearchAreaRef.current?.(c.lat, c.lng);
-            };
-            return div;
-          },
-        });
-        map.addControl(new SearchControl({ position: "topright" }));
-      }
-
-      mapRef.current = map;
-      setMapReady(true);
-    })();
+    mapRef.current = map;
+    setMapReady(true);
 
     return () => {
       cancelled = true;
@@ -82,8 +74,7 @@ export default function MapExplorer({
   }, []);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !_L) return;
-    const L = _L;
+    if (!mapReady || !mapRef.current) return;
 
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
@@ -120,10 +111,5 @@ export default function MapExplorer({
     }
   }, [stops, mapReady]);
 
-  return (
-    <div
-      ref={containerRef}
-      style={{ width: "100%", height: "450px" }}
-    />
-  );
+  return <div ref={containerRef} className="map-container" />;
 }

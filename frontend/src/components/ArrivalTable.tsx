@@ -1,22 +1,22 @@
 "use client";
 
 import type { ArrivalRecord } from "@/types";
-
-function formatDelay(seconds: number): string {
-  const sign = seconds < 0 ? "-" : "+";
-  const abs = Math.abs(Math.round(seconds));
-  const m = Math.floor(abs / 60);
-  const s = abs % 60;
-  return `${sign}${m}:${s.toString().padStart(2, "0")}`;
-}
+import { formatDelay } from "@/lib/format";
 
 function formatTime(isoString: string): string {
   const d = new Date(isoString);
-  return d.toLocaleTimeString(undefined, {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Sydney",
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-  });
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)!.value;
+  return `${get("day")}/${get("month")}/${get("year")} ${get("hour")}:${get("minute")}:${get("second")}`;
 }
 
 function formatStatus(status: string): string {
@@ -26,40 +26,24 @@ function formatStatus(status: string): string {
     .join(" ");
 }
 
-function getStatusBadgeStyle(status: string) {
-  const normalized = status.toLowerCase();
-  let bg = "var(--color-status-success)";
-  if (normalized === "delayed") bg = "var(--color-status-danger)";
-  if (normalized === "early") bg = "var(--color-primary)";
-  if (normalized === "cancelled") bg = "var(--color-status-muted)";
+type StatusVariant = "danger" | "warning" | "success" | "primary" | "muted";
 
-  return {
-    backgroundColor: bg,
-    color: "#ffffff",
-    padding: "0.25rem 0.5rem",
-    borderRadius: "var(--rounded-sm)",
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    textTransform: "uppercase" as const,
-    display: "inline-block",
-  };
+function badgeVariant(status: string): StatusVariant {
+  const normalized = status.toLowerCase();
+  if (normalized === "delayed") return "danger";
+  if (normalized === "early") return "primary";
+  if (normalized === "cancelled") return "muted";
+  return "success";
 }
 
-function getDelayStyle(seconds: number) {
-  let color = "var(--color-status-success)";
-  if (seconds > 120) {
-    color = "var(--color-status-danger)";
-  } else if (seconds > 0) {
-    color = "var(--color-status-warning)";
-  }
-  return {
-    color,
-    fontWeight: 600,
-  };
+function delayVariant(seconds: number): "success" | "warning" | "danger" {
+  if (seconds > 120) return "danger";
+  if (seconds > 0) return "warning";
+  return "success";
 }
 
 export default function ArrivalTable({ data }: { data: ArrivalRecord[] }) {
-  if (data.length === 0) return <p>No arrival records yet.</p>;
+  if (data.length === 0) return <p className="muted">No arrival records yet.</p>;
 
   return (
     <table>
@@ -76,11 +60,11 @@ export default function ArrivalTable({ data }: { data: ArrivalRecord[] }) {
           <tr key={r.id}>
             <td>{formatTime(r.scheduled_arrival)}</td>
             <td>{formatTime(r.actual_arrival)}</td>
-            <td style={getDelayStyle(r.delay_seconds)}>
-              {formatDelay(r.delay_seconds)}
+            <td className={`delay-cell delay-cell--${delayVariant(r.delay_seconds)}`}>
+              {formatDelay(r.delay_seconds, { signed: true })}
             </td>
             <td>
-              <span style={getStatusBadgeStyle(r.status)}>
+              <span className={`status-badge status-${badgeVariant(r.status)}`}>
                 {formatStatus(r.status)}
               </span>
             </td>

@@ -33,6 +33,16 @@ export default function RouteSearch({
     enabled: debounced.length >= 2,
   });
 
+  const handleKey = (
+    e: React.KeyboardEvent<HTMLLIElement>,
+    route: BusRoute,
+  ) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect(route);
+    }
+  };
+
   return (
     <div>
       <input
@@ -40,13 +50,22 @@ export default function RouteSearch({
         placeholder="Search for a bus route (e.g. 389)..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search for a bus route"
       />
       {isLoading && <Skeleton lines={3} />}
       {isError && <p className="error">Search failed: {error.message}</p>}
       {!isError && !isLoading && results.length > 0 && (
-        <ul>
+        <ul role="listbox" aria-label="Bus route results">
           {results.map((r) => (
-            <li key={r.route_id} onClick={() => onSelect(r)}>
+            <li
+              key={r.route_id}
+              className="selectable"
+              role="option"
+              tabIndex={0}
+              onClick={() => onSelect(r)}
+              onKeyDown={(e) => handleKey(e, r)}
+              aria-selected={false}
+            >
               <strong>{r.route_number}</strong>
               {r.description && <> &mdash; {r.description}</>}
             </li>

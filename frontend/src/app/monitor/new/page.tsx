@@ -18,6 +18,12 @@ const MapExplorer = dynamic(() => import("@/components/MapExplorer"), {
 
 type Tab = "map" | "route" | "stop";
 
+const TAB_LABELS: Record<Tab, string> = {
+  map: "By Map",
+  route: "By Route",
+  stop: "By Stop",
+};
+
 export default function NewMonitorPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -83,14 +89,17 @@ export default function NewMonitorPage() {
     <div>
       <h1>New Monitor</h1>
 
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+      <div className="tab-bar" role="tablist" aria-label="Monitor creation method">
         {(["map", "route", "stop"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => { setTab(t); setStop(null); setRoute(null); }}
             disabled={tab === t}
+            className={tab === t ? "active" : ""}
+            role="tab"
+            aria-selected={tab === t}
           >
-            {t === "map" ? "By Map" : t === "route" ? "By Route" : "By Stop"}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -162,16 +171,20 @@ function RouteFlow({
           Route <strong>{route.route_number}</strong>
           {route.description && <> &mdash; {route.description}</>}
         </p>
-        <button onClick={() => onRouteSelect(null)}>Change route</button>
+        <button className="outline" onClick={() => onRouteSelect(null)}>
+          Change route
+        </button>
 
         {routeStops.length > 0 && (
-          <MapExplorer
-            stops={routeStops.map((s) => ({ ...s, id: s.id || "" }))}
-            onSelect={onStopSelect}
-          />
+          <div className="map-container map-container--inline">
+            <MapExplorer
+              stops={routeStops.map((s) => ({ ...s, id: s.id || "" }))}
+              onSelect={onStopSelect}
+            />
+          </div>
         )}
 
-        <p>Select a stop on this route:</p>
+        <p className="muted">Select a stop on this route:</p>
         <StopSearch onSelect={onStopSelect} />
       </div>
     );
@@ -212,28 +225,32 @@ function MapFlow({
 
   return (
     <div>
-      <div style={{ display: "flex", gap: "0.5rem" }}>
+      <div className="search-row">
         <input
           type="text"
           placeholder="Search for a stop to show on the map..."
           value={query}
           onChange={(e) => { onQueryChange(e.target.value); setMapStops([]); }}
-          style={{ flex: 1 }}
+          aria-label="Search for a stop to show on the map"
         />
         {query && (
-          <button onClick={() => { onQueryChange(""); setMapStops([]); }}>Clear</button>
+          <button className="outline" onClick={() => { onQueryChange(""); setMapStops([]); }}>
+            Clear
+          </button>
         )}
       </div>
-      <MapExplorer
-        stops={displayedStops}
-        onSelect={onStopSelect}
-        onSearchArea={handleSearchArea}
-      />
+      <div className="map-container">
+        <MapExplorer
+          stops={displayedStops}
+          onSelect={onStopSelect}
+          onSearchArea={handleSearchArea}
+        />
+      </div>
       {displayedStops.length === 0 && query.length >= 2 && (
-        <p>No stops found. Try a different search.</p>
+        <p className="muted">No stops found. Try a different search.</p>
       )}
       {mapStops.length > 0 && (
-        <p style={{ marginTop: "0.5rem", color: "#666" }}>
+        <p className="filter-meta">
           {mapStops.length} stop{mapStops.length !== 1 ? "s" : ""} found in this area.
         </p>
       )}
@@ -258,19 +275,26 @@ function ConfirmStep({
 }) {
   return (
     <div>
-      <p>
-        <strong>{stop.name}</strong> &mdash; Route {route.route_number}
-      </p>
-      {route.description && (
-        <p style={{ color: "#666", fontSize: "0.9rem" }}>{route.description}</p>
-      )}
-      <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
-        <button onClick={onBack}>Change</button>
-        <button onClick={onCreate} disabled={isCreating}>
-          {isCreating ? "Creating..." : "Create Monitor"}
-        </button>
+      <h1>Confirm Monitor</h1>
+      <div className="panel">
+        <p style={{ marginBottom: 0 }}>
+          <strong>{stop.name}</strong> &mdash; Route {route.route_number}
+        </p>
+        {route.description && (
+          <p className="confirm-summary__description" style={{ marginTop: "var(--space-xs)" }}>
+            {route.description}
+          </p>
+        )}
+        <div className="confirm-summary">
+          <button className="outline" onClick={onBack}>
+            Change
+          </button>
+          <button onClick={onCreate} disabled={isCreating}>
+            {isCreating ? "Creating..." : "Create Monitor"}
+          </button>
+        </div>
+        {createError && <p className="error">Failed to create: {createError}</p>}
       </div>
-      {createError && <p className="error">Failed to create: {createError}</p>}
     </div>
   );
 }

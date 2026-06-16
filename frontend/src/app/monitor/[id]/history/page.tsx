@@ -27,10 +27,10 @@ export default function MonitorHistoryPage() {
 
   return (
     <div>
-      <Link href={`/monitor/${id}`} style={{ color: "#1a73e8", fontWeight: 600, fontSize: "0.95rem" }}>
+      <Link href={`/monitor/${id}`} className="page-header__back">
         &larr; Back to Monitor
       </Link>
-      <h1 style={{ marginTop: "0.5rem" }}>Arrival History</h1>
+      <h1 style={{ marginTop: "var(--space-sm)" }}>Arrival History</h1>
       <ArrivalTable data={arrivals} />
     </div>
   );

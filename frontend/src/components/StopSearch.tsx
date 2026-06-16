@@ -33,6 +33,16 @@ export default function StopSearch({
     enabled: debounced.length >= 2,
   });
 
+  const handleKey = (
+    e: React.KeyboardEvent<HTMLLIElement>,
+    stop: BusStop,
+  ) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect(stop);
+    }
+  };
+
   return (
     <div>
       <input
@@ -40,13 +50,22 @@ export default function StopSearch({
         placeholder="Search for a bus stop..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search for a bus stop"
       />
       {isLoading && <Skeleton lines={3} />}
       {isError && <p className="error">Search failed: {error.message}</p>}
       {!isError && !isLoading && results.length > 0 && (
-        <ul>
+        <ul role="listbox" aria-label="Bus stop results">
           {results.map((s) => (
-            <li key={s.id} onClick={() => onSelect(s)}>
+            <li
+              key={s.id}
+              className="selectable"
+              role="option"
+              tabIndex={0}
+              onClick={() => onSelect(s)}
+              onKeyDown={(e) => handleKey(e, s)}
+              aria-selected={false}
+            >
               {s.name}
             </li>
           ))}

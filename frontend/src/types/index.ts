@@ -61,6 +61,8 @@ export interface ArrivalBucket {
 }
 
 export interface PercentileStats {
+  p5: number;
+  p10: number;
   p50: number;
   p75: number;
   p90: number;

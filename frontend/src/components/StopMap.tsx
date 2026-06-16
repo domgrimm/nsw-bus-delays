@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import L from "leaflet";
 
 import type { BusStop } from "@/types";
 
 import "leaflet/dist/leaflet.css";
-
-let _L: any = null;
-
-async function getLeaflet(): Promise<any> {
-  if (_L) return _L;
-  _L = await import("leaflet");
-  return _L;
-}
 
 export default function StopMap({
   stops,
@@ -24,8 +17,8 @@ export default function StopMap({
   showSelect?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
   const onSelectRef = useRef(onSelect);
   const [mapReady, setMapReady] = useState(false);
 
@@ -35,17 +28,18 @@ export default function StopMap({
     if (!containerRef.current || mapRef.current) return;
     let cancelled = false;
 
-    (async () => {
-      const L = await getLeaflet();
-      if (cancelled || !containerRef.current) return;
+    const map = L.map(containerRef.current).setView([-33.87, 151.21], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap",
+    }).addTo(map);
 
-      const map = L.map(containerRef.current).setView([-33.87, 151.21], 13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap",
-      }).addTo(map);
-      mapRef.current = map;
-      setMapReady(true);
-    })();
+    if (cancelled) {
+      map.remove();
+      return;
+    }
+
+    mapRef.current = map;
+    setMapReady(true);
 
     return () => {
       cancelled = true;
@@ -55,8 +49,7 @@ export default function StopMap({
   }, []);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !_L) return;
-    const L = _L;
+    if (!mapReady || !mapRef.current) return;
 
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
@@ -94,12 +87,7 @@ export default function StopMap({
       const group = L.featureGroup(markersRef.current);
       mapRef.current.fitBounds(group.getBounds().pad(0.1));
     }
-  }, [stops, mapReady]);
+  }, [stops, mapReady, showSelect]);
 
-  return (
-    <div
-      ref={containerRef}
-      style={{ width: "100%", height: "400px", marginBottom: "1rem" }}
-    />
-  );
+  return <div ref={containerRef} className="map-container map-container--compact" />;
 }

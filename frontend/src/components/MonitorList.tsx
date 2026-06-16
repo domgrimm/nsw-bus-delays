@@ -40,8 +40,8 @@ export default function MonitorList() {
 
   if (monitors.length === 0) {
     return (
-      <div style={{ textAlign: "center", padding: "2rem 0" }}>
-        <p style={{ color: "var(--color-status-muted)", marginBottom: "1rem" }}>
+      <div className="empty-state">
+        <p className="empty-state__text">
           No monitors yet. Add one to start tracking bus delays.
         </p>
         <Link href="/monitor/new">
@@ -52,7 +52,7 @@ export default function MonitorList() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+    <div className="monitor-list">
       {monitors.map((m) => (
         <MonitorCard key={m.id} monitor={m} onDelete={() => del.mutate(m.id)} />
       ))}
@@ -70,50 +70,43 @@ function MonitorCard({
   const [showConfirm, setShowConfirm] = useState(false);
 
   return (
-    <div className="card interactive-card">
-      <Link href={`/monitor/${monitor.id}`} style={{ flex: 1, display: "block", textDecoration: "none" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-          <h3 style={{ color: "var(--color-ink)", fontSize: "1.1rem", margin: 0 }}>
-            {monitor.stop_name || monitor.stop_id}
-          </h3>
-          <p style={{ color: "var(--color-status-muted)", fontSize: "0.85rem", margin: 0 }}>
-            Route {monitor.route_number} &middot;{" "}
-            <span
-              style={{
-                color: monitor.active ? "var(--color-status-success)" : "var(--color-status-muted)",
-                fontWeight: 600,
-              }}
-            >
-              {monitor.active ? "Active" : "Inactive"}
-            </span>
-          </p>
-        </div>
+    <div className="card interactive-card monitor-card">
+      <Link href={`/monitor/${monitor.id}`} className="monitor-card__body">
+        <h3 className="monitor-card__title">
+          {monitor.stop_name || monitor.stop_id}
+        </h3>
+        <p className="monitor-card__meta">
+          Route {monitor.route_number} &middot;{" "}
+          <span
+            className={`monitor-card__status ${monitor.active ? "monitor-card__status--active" : "monitor-card__status--inactive"}`}
+          >
+            {monitor.active ? "Active" : "Inactive"}
+          </span>
+        </p>
       </Link>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+      <div className="monitor-card__actions">
         {showConfirm ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-            <span style={{ fontSize: "0.75rem", color: "var(--color-status-danger)", fontWeight: 600, marginRight: "4px" }}>
-              Are you sure?
-            </span>
-            <button className="danger" onClick={onDelete} style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}>
+          <div className="monitor-card__confirm">
+            <span className="monitor-card__confirm-text">Are you sure?</span>
+            <button
+              className="danger monitor-card__btn-sm"
+              onClick={onDelete}
+            >
               Yes
             </button>
             <button
+              className="outline monitor-card__btn-sm"
               onClick={() => setShowConfirm(false)}
-              style={{
-                background: "transparent",
-                color: "var(--color-ink)",
-                border: "1px solid var(--color-border)",
-                padding: "0.25rem 0.5rem",
-                fontSize: "0.75rem",
-              }}
             >
               No
             </button>
           </div>
         ) : (
-          <button className="danger" onClick={() => setShowConfirm(true)} style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}>
+          <button
+            className="danger monitor-card__btn-md"
+            onClick={() => setShowConfirm(true)}
+          >
             Delete
           </button>
         )}

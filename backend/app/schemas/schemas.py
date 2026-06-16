@@ -52,6 +52,8 @@ class ArrivalBucket(BaseModel):
 
 
 class PercentileStats(BaseModel):
+    p5: float
+    p10: float
     p50: float
     p75: float
     p90: float

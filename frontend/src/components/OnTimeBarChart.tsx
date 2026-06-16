@@ -21,7 +21,7 @@ export default function OnTimeBarChart({
 }: {
   data: DailyStats[];
 }) {
-  if (data.length === 0) return <p>No daily data available.</p>;
+  if (data.length === 0) return <p className="muted">No daily data available.</p>;
 
   const chartData = data.map((d) => ({
     date: d.date,
@@ -34,20 +34,37 @@ export default function OnTimeBarChart({
   return (
     <ResponsiveContainer width="100%" height={250}>
       <BarChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" fontSize={12} />
-        <YAxis domain={[0, 100]} unit="%" />
-        <Tooltip formatter={(v: number) => `${v}%`} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+        <XAxis
+          dataKey="date"
+          fontSize={12}
+          stroke="var(--color-status-muted)"
+        />
+        <YAxis
+          domain={[0, 100]}
+          unit="%"
+          stroke="var(--color-status-muted)"
+        />
+        <Tooltip
+          formatter={(v: number) => `${v}%`}
+          contentStyle={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--rounded-sm)",
+            color: "var(--color-ink)",
+            fontSize: "0.85rem",
+          }}
+        />
         <ReferenceLine
           y={OTP_BENCHMARK}
-          stroke="#d96b00"
+          stroke="var(--color-status-warning)"
           strokeDasharray="5 5"
           strokeWidth={1.5}
           label={{
             value: `Benchmark ${OTP_BENCHMARK}%`,
             position: "right",
             fontSize: 10,
-            fill: "#d96b00",
+            fill: "var(--color-status-warning)",
           }}
         />
         <Bar dataKey="on_time_percentage" name="On-Time %">
@@ -56,8 +73,8 @@ export default function OnTimeBarChart({
               key={`cell-${index}`}
               fill={
                 entry.on_time_percentage >= OTP_BENCHMARK
-                  ? "#107c41"
-                  : "#da292b"
+                  ? "var(--color-status-success)"
+                  : "var(--color-status-danger)"
               }
             />
           ))}

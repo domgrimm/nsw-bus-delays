@@ -24,6 +24,12 @@ const ToastContext = createContext<ToastContextValue>({
 
 let nextId = 0;
 
+const ICON: Record<ToastType, string> = {
+  success: "OK",
+  error: "ERR",
+  info: "i",
+};
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -45,25 +51,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      <div style={{ position: "fixed", top: 16, right: 16, zIndex: 1000 }}>
+      <div className="toast-container" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div
             key={t.id}
+            className="toast"
             onClick={() => removeToast(t.id)}
-            style={{
-              padding: "0.75rem 1rem",
-              marginBottom: 8,
-              borderRadius: 6,
-              color: "white",
-              cursor: "pointer",
-              background:
-                t.type === "error"
-                  ? "#d32f2f"
-                  : t.type === "success"
-                    ? "#388e3c"
-                    : "#1976d2",
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                removeToast(t.id);
+              }
             }}
+            role="button"
+            aria-label={`Dismiss ${t.type} notification: ${t.message}`}
           >
+            <strong style={{ marginRight: 8 }}>{ICON[t.type]}</strong>
             {t.message}
           </div>
         ))}

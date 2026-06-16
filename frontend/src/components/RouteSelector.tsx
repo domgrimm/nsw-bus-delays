@@ -28,11 +28,31 @@ export default function RouteSelector({
     queryFn: () => getStopRoutes(stopId),
   });
 
+  const handleBack = () => {
+    onSelect({
+      route_id: "__back__",
+      route_number: "",
+      name: "",
+      description: "",
+      destination_name: "",
+    } as BusRoute);
+  };
+
+  const handleKey = (
+    e: React.KeyboardEvent<HTMLLIElement>,
+    route: BusRoute,
+  ) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect(route);
+    }
+  };
+
   if (isLoading) return <Skeleton lines={5} />;
   if (isError) return <p className="error">Failed to load routes: {error.message}</p>;
 
   if (routes.length === 0) {
-    return <p>No routes found for {stopName}.</p>;
+    return <p className="muted">No routes found for {stopName}.</p>;
   }
 
   const filtered = filter
@@ -48,7 +68,7 @@ export default function RouteSelector({
     <div>
       <h3>
         Routes at {stopName}{" "}
-        <button onClick={() => onSelect({ route_id: "__back__", route_number: "", name: "", description: "", destination_name: "" } as BusRoute)}>← back</button>
+        <button onClick={handleBack}>&larr; back</button>
       </h3>
 
       <input
@@ -56,13 +76,22 @@ export default function RouteSelector({
         placeholder="Filter routes by number or destination..."
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
+        aria-label="Filter routes"
       />
 
-      {filtered.length === 0 && <p>No routes match.</p>}
+      {filtered.length === 0 && <p className="muted">No routes match.</p>}
 
-      <ul>
+      <ul role="listbox" aria-label="Routes">
         {filtered.slice(0, 30).map((r) => (
-          <li key={r.route_id} onClick={() => onSelect(r)}>
+          <li
+            key={r.route_id}
+            className="selectable"
+            role="option"
+            tabIndex={0}
+            onClick={() => onSelect(r)}
+            onKeyDown={(e) => handleKey(e, r)}
+            aria-selected={false}
+          >
             <strong>{r.route_number}</strong>
             {r.description && <> &mdash; {r.description}</>}
           </li>
