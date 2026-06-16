@@ -27,6 +27,7 @@ class TfNSWDeparture:
     destination_name: str
     scheduled_departure: str
     estimated_departure: str | None
+    is_cancelled: bool = False
 
 
 class TfNSWClient:
@@ -178,6 +179,7 @@ class TfNSWClient:
                     ),
                     scheduled_departure=scheduled,
                     estimated_departure=estimated,
+                    is_cancelled=ev.get("isCancelled", False),
                 )
             )
         return departures

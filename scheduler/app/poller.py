@@ -16,7 +16,6 @@ THRESHOLD = settings.on_time_threshold_seconds
 MAX_FAILURES = settings.max_consecutive_failures
 
 _consecutive_failures: dict[str, int] = defaultdict(int)
-_prev_trips: dict[str, set[tuple[str, datetime]]] = defaultdict(set)
 
 
 def compute_status(delay_seconds: int) -> ArrivalStatus:
@@ -96,8 +95,6 @@ async def poll_active_monitors():
 
             _record_success(monitor_id)
 
-            current_trips: set[tuple[str, datetime]] = set()
-
             for dep in departures:
                 if dep.route_id != route.route_id:
                     continue
@@ -112,8 +109,6 @@ async def poll_active_monitors():
                 except ValueError:
                     continue
 
-                current_trips.add((dep.trip_id, scheduled))
-
                 now_utc = datetime.now(timezone.utc)
                 age_seconds = (now_utc - scheduled).total_seconds()
                 if age_seconds < 300:
@@ -121,8 +116,12 @@ async def poll_active_monitors():
                 if age_seconds > 1800:
                     continue
 
-                delay = int((estimated - scheduled).total_seconds())
-                status = compute_status(delay)
+                if dep.is_cancelled:
+                    delay = 0
+                    status = ArrivalStatus.cancelled
+                else:
+                    delay = int((estimated - scheduled).total_seconds())
+                    status = compute_status(delay)
 
                 existing = (
                     db.query(ArrivalRecord)
@@ -136,7 +135,7 @@ async def poll_active_monitors():
                 if existing:
                     if existing.actual_arrival == estimated:
                         continue
-                    if estimated == scheduled:
+                    if estimated == scheduled and not dep.is_cancelled:
                         continue
                     existing.actual_arrival = estimated
                     existing.delay_seconds = delay
@@ -159,41 +158,6 @@ async def poll_active_monitors():
                         db.flush()
                 except IntegrityError:
                     continue
-
-            now_utc = datetime.now(timezone.utc)
-            prev = _prev_trips.get(monitor_id, set())
-            for tid, scheduled in prev:
-                if (tid, scheduled) in current_trips:
-                    continue
-                age = (now_utc - scheduled).total_seconds()
-                if age < 300 or age > 1800:
-                    continue
-                existing = (
-                    db.query(ArrivalRecord)
-                    .filter(
-                        ArrivalRecord.monitored_trip_id == trip.id,
-                        ArrivalRecord.trip_id == tid,
-                        ArrivalRecord.scheduled_arrival == scheduled,
-                    )
-                    .first()
-                )
-                if existing is None:
-                    record = ArrivalRecord(
-                        monitored_trip_id=trip.id,
-                        trip_id=tid,
-                        scheduled_arrival=scheduled,
-                        actual_arrival=scheduled,
-                        delay_seconds=0,
-                        status=ArrivalStatus.cancelled,
-                        recorded_at=now_utc,
-                    )
-                    try:
-                        with db.begin_nested():
-                            db.add(record)
-                            db.flush()
-                    except IntegrityError:
-                        continue
-            _prev_trips[monitor_id] = current_trips
 
             db.commit()
             logger.info(
