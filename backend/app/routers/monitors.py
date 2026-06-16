@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -191,3 +192,121 @@ async def get_monitor_arrivals(
         )
         for r in records
     ]
+
+
+@router.get("/monitors/{monitor_id}/scheduled-departure-stats")
+async def get_scheduled_departure_stats(
+    monitor_id: str,
+    scheduled_time: str = Query(..., pattern=r"^\d{1,2}:\d{2}$"),
+    period: str = Query("week", pattern="^(day|week|month|all_time)$"),
+    service_type: str | None = Query(None, pattern="^(weekday|saturday|sunday)$"),
+    db: Session = Depends(get_db),
+):
+    trip = db.query(MonitoredTrip).filter(MonitoredTrip.id == monitor_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+
+    try:
+        hour_str, minute_str = scheduled_time.split(":")
+        hour = int(hour_str)
+        minute = int(minute_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid scheduled_time format. Use HH:MM")
+
+    from datetime import timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+
+    if period == "day":
+        start = now - timedelta(days=1)
+    elif period == "week":
+        start = now - timedelta(days=7)
+    elif period == "month":
+        start = now - timedelta(days=30)
+    elif period == "all_time":
+        start = datetime.min.replace(tzinfo=timezone.utc)
+    else:
+        start = now - timedelta(days=7)
+
+    query = db.query(ArrivalRecord).filter(
+        ArrivalRecord.monitored_trip_id == trip.id,
+        ArrivalRecord.recorded_at >= start,
+    )
+
+    tz_col = text("arrival_records.scheduled_arrival AT TIME ZONE 'Australia/Sydney'")
+    query = query.filter(
+        func.extract("hour", tz_col) == hour,
+        func.extract("minute", tz_col) == minute,
+    )
+
+    if service_type:
+        if service_type == "weekday":
+            query = query.filter(
+                text("EXTRACT(DOW FROM arrival_records.scheduled_arrival AT TIME ZONE 'Australia/Sydney') IN (1,2,3,4,5)")
+            )
+        elif service_type == "saturday":
+            query = query.filter(
+                text("EXTRACT(DOW FROM arrival_records.scheduled_arrival AT TIME ZONE 'Australia/Sydney') = 6")
+            )
+        elif service_type == "sunday":
+            query = query.filter(
+                text("EXTRACT(DOW FROM arrival_records.scheduled_arrival AT TIME ZONE 'Australia/Sydney') = 0")
+            )
+
+    records = query.all()
+
+    total = len(records)
+    if total == 0:
+        return {
+            "service_type": service_type,
+            "scheduled_time": scheduled_time,
+            "period": period,
+            "period_start": start.isoformat(),
+            "period_end": now.isoformat(),
+            "total_arrivals": 0,
+            "early_count": 0,
+            "on_time_count": 0,
+            "delayed_count": 0,
+            "cancelled_count": 0,
+            "average_delay_seconds": 0,
+            "max_delay_seconds": 0,
+            "on_time_percentage": 0,
+            "arrivals": [],
+        }
+
+    early = sum(1 for r in records if r.status.value == "early")
+    on_time = sum(1 for r in records if r.status.value == "on_time")
+    delayed = sum(1 for r in records if r.status.value == "delayed")
+    cancelled = sum(1 for r in records if r.status.value == "cancelled")
+    avg_delay = sum(r.delay_seconds for r in records) / total if total else 0
+    max_delay = max((r.delay_seconds for r in records), default=0)
+    on_time_pct = (on_time / total * 100) if total else 0
+
+    arrival_responses = [
+        {
+            "id": str(r.id),
+            "scheduled_arrival": r.scheduled_arrival.isoformat(),
+            "actual_arrival": r.actual_arrival.isoformat(),
+            "delay_seconds": r.delay_seconds,
+            "status": r.status.value,
+            "recorded_at": r.recorded_at.isoformat(),
+        }
+        for r in sorted(records, key=lambda x: x.recorded_at, reverse=True)
+    ]
+
+    return {
+        "service_type": service_type,
+        "scheduled_time": scheduled_time,
+        "period": period,
+        "period_start": start.isoformat(),
+        "period_end": now.isoformat(),
+        "total_arrivals": total,
+        "early_count": early,
+        "on_time_count": on_time,
+        "delayed_count": delayed,
+        "cancelled_count": cancelled,
+        "average_delay_seconds": round(avg_delay, 2),
+        "max_delay_seconds": max_delay,
+        "on_time_percentage": round(on_time_pct, 2),
+        "arrivals": arrival_responses,
+    }

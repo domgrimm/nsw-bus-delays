@@ -106,3 +106,35 @@ export interface ArrivalRecord {
   status: "early" | "on_time" | "delayed" | "cancelled";
   recorded_at: string;
 }
+
+export interface TimetableResponse {
+  route_number: string;
+  stop_id: string;
+  weekday: string[];
+  saturday: string[];
+  sunday: string[];
+}
+
+export interface ScheduledDepartureStats {
+  service_type: string | null;
+  scheduled_time: string;
+  period: string;
+  period_start: string;
+  period_end: string;
+  total_arrivals: number;
+  early_count: number;
+  on_time_count: number;
+  delayed_count: number;
+  cancelled_count: number;
+  average_delay_seconds: number;
+  max_delay_seconds: number;
+  on_time_percentage: number;
+  arrivals: {
+    id: string;
+    scheduled_arrival: string;
+    actual_arrival: string;
+    delay_seconds: number;
+    status: string;
+    recorded_at: string;
+  }[];
+}

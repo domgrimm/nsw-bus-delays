@@ -7,6 +7,8 @@ import type {
   Monitor,
   MonitorCreate,
   Period,
+  ScheduledDepartureStats,
+  TimetableResponse,
 } from "@/types";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -103,4 +105,26 @@ export async function getMonitorBunching(
   period: Period,
 ): Promise<BunchingEvent[]> {
   return fetchJson<BunchingEvent[]>(`/api/monitors/${id}/bunching?period=${period}`);
+}
+
+export async function getRouteTimetable(
+  routeNumber: string,
+  stopId: string,
+): Promise<TimetableResponse> {
+  return fetchJson<TimetableResponse>(
+    `/api/gtfs/routes/${routeNumber}/timetable?stop_id=${encodeURIComponent(stopId)}`,
+  );
+}
+
+export async function getScheduledDepartureStats(
+  id: string,
+  scheduledTime: string,
+  period: Period,
+  serviceType?: string,
+): Promise<ScheduledDepartureStats> {
+  const params = new URLSearchParams({ scheduled_time: scheduledTime, period });
+  if (serviceType) params.set("service_type", serviceType);
+  return fetchJson<ScheduledDepartureStats>(
+    `/api/monitors/${id}/scheduled-departure-stats?${params}`,
+  );
 }
