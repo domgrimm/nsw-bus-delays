@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
-import { getMonitor, getMonitorStats, getMonitorArrivals } from "@/lib/api";
+import { getMonitor, getMonitorStats, getMonitorArrivals, getMonitorBunching, generateMockMonitors } from "@/lib/api";
 import type { Period } from "@/types";
 import { UIProvider, useUI } from "@/context/ui";
 import Skeleton from "@/components/Skeleton";
@@ -15,6 +15,10 @@ import DelayChart from "@/components/DelayChart";
 import OnTimeBarChart from "@/components/OnTimeBarChart";
 import StatusPieChart from "@/components/StatusPieChart";
 import ArrivalTable from "@/components/ArrivalTable";
+import ArrivalDistributionChart from "@/components/ArrivalDistributionChart";
+import BunchingTimeline from "@/components/BunchingTimeline";
+import HeatMap from "@/components/HeatMap";
+import { useToast } from "@/context/toast";
 
 const StopMap = dynamic(() => import("@/components/StopMap"), { ssr: false });
 
@@ -25,7 +29,7 @@ function PeriodSelector({
   value: Period;
   onChange: (p: Period) => void;
 }) {
-  const periods: Period[] = ["day", "week", "month"];
+  const periods: Period[] = ["day", "week", "month", "all_time"];
   return (
     <div className="segmented-control">
       {periods.map((p) => (
@@ -35,7 +39,7 @@ function PeriodSelector({
           disabled={p === value}
           className={p === value ? "active" : ""}
         >
-          {p.charAt(0).toUpperCase() + p.slice(1)}
+          {p === "all_time" ? "All Time" : p.charAt(0).toUpperCase() + p.slice(1)}
         </button>
       ))}
     </div>
@@ -44,23 +48,20 @@ function PeriodSelector({
 
 function DashboardInner() {
   const { id } = useParams<{ id: string }>();
-  const { selectedPeriod, setSelectedPeriod } = useUI();
+  const router = useRouter();
+  const { selectedPeriod, setSelectedPeriod, useMock, setUseMock } = useUI();
+  const { addToast } = useToast();
   const [showMap, setShowMap] = useState(false);
 
-  const {
-    data: monitor,
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const { data: monitor, isLoading, isError, error } = useQuery({
     queryKey: ["monitor", id],
     queryFn: () => getMonitor(id),
   });
 
-  const { data: stats, isError: statsError, error: statsErr } = useQuery({
-    queryKey: ["monitor-stats", id, selectedPeriod],
-    queryFn: () => getMonitorStats(id, selectedPeriod),
-    refetchInterval: 60_000,
+  const { data: stats, isError: statsError, error: statsErr, isLoading: statsLoading } = useQuery({
+    queryKey: ["monitor-stats", id, selectedPeriod, useMock],
+    queryFn: () => getMonitorStats(id, selectedPeriod, useMock),
+    refetchInterval: useMock ? false : 60_000,
   });
 
   const { data: arrivals = [] } = useQuery({
@@ -68,6 +69,15 @@ function DashboardInner() {
     queryFn: () => getMonitorArrivals(id),
     refetchInterval: 60_000,
   });
+
+  const { data: bunchingData = [] } = useQuery({
+    queryKey: ["monitor-bunching", id, selectedPeriod, useMock],
+    queryFn: () => getMonitorBunching(id, selectedPeriod, useMock),
+    refetchInterval: useMock ? false : 60_000,
+  });
+
+  const showHeatmap = selectedPeriod === "week" || selectedPeriod === "month" || selectedPeriod === "all_time";
+  const showDailyBreakdown = selectedPeriod === "week" || selectedPeriod === "month" || selectedPeriod === "all_time";
 
   if (isLoading) return <Skeleton lines={5} />;
   if (isError) return <p className="error">Error: {error.message}</p>;
@@ -89,6 +99,15 @@ function DashboardInner() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={useMock}
+              onChange={(e) => setUseMock(e.target.checked)}
+              style={{ cursor: "pointer" }}
+            />
+            Mock data
+          </label>
           <button
             onClick={() => setShowMap(!showMap)}
             style={{
@@ -128,25 +147,65 @@ function DashboardInner() {
 
       {statsError && <p className="error">Failed to load stats: {statsErr.message}</p>}
 
+      {statsLoading && <Skeleton lines={2} />}
+
       {stats && <SummaryCards stats={stats} />}
 
       <div className="dashboard-grid">
         <div className="dashboard-main">
-          {arrivals.length > 0 && (
+          {showHeatmap && stats && stats.heatmap && stats.heatmap.length > 0 && (
             <div className="panel">
-              <h2 className="panel-title">Real-Time Delays (Last 20 Arrivals)</h2>
-              <DelayChart data={arrivals} />
+              <h2 className="panel-title">
+                {selectedPeriod === "all_time"
+                  ? "All-Time Delay Heatmap"
+                  : `Delay Heatmap (${selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)})`}
+              </h2>
+              <HeatMap
+                data={stats.heatmap}
+                weekdayData={stats.weekday_heatmap}
+                weekendData={stats.weekend_heatmap}
+              />
             </div>
           )}
 
-          {stats && stats.daily_breakdown.length > 0 && (
+          {stats && stats.arrival_distribution && stats.arrival_distribution.length > 0 && (
+            <div className="panel">
+              <h2 className="panel-title">Arrival Probability Distribution</h2>
+              <ArrivalDistributionChart data={stats.arrival_distribution} />
+            </div>
+          )}
+
+          {showDailyBreakdown && stats && stats.daily_breakdown.length > 0 && (
             <div className="panel">
               <h2 className="panel-title">On-Time Performance Timeline</h2>
               <OnTimeBarChart data={stats.daily_breakdown} />
             </div>
           )}
 
-          {arrivals.length > 0 && (
+          {bunchingData.length > 0 && (
+            <div className="panel">
+              <h2 className="panel-title">Bus Bunching Events</h2>
+              <BunchingTimeline data={bunchingData} />
+            </div>
+          )}
+
+          {bunchingData.length === 0 && showHeatmap && (
+            <div className="panel">
+              <h2 className="panel-title">Bus Bunching Events</h2>
+              <p style={{ color: "var(--color-status-muted)", fontSize: "0.85rem" }}>
+                No bunching events detected in this period.
+              </p>
+            </div>
+          )}
+
+          {arrivals.length > 0 && !useMock && (
+            <div className="panel">
+              <h2 className="panel-title">Real-Time Delays (Last 20 Arrivals)</h2>
+              <DelayChart data={arrivals} />
+            </div>
+          )}
+
+          {arrivals.length > 0 && !useMock && (
             <div className="panel">
               <h2 className="panel-title">Recent Arrivals Details</h2>
               <ArrivalTable data={arrivals.slice(0, 20)} />
@@ -161,6 +220,27 @@ function DashboardInner() {
               <StatusPieChart stats={stats} />
             </div>
           )}
+
+          <div className="panel">
+            <h2 className="panel-title">Mock Data</h2>
+            <p style={{ fontSize: "0.85rem", color: "var(--color-status-muted)", marginBottom: "0.75rem" }}>
+              Generate mock monitors with varied delay patterns for exploration.
+            </p>
+            <button
+              onClick={async () => {
+                try {
+                  const result = await generateMockMonitors();
+                  addToast(`Created ${result.monitor_ids.length} mock monitors`, "success");
+                  router.refresh();
+                } catch (e) {
+                  addToast("Failed to create mock monitors", "error");
+                }
+              }}
+              style={{ width: "100%" }}
+            >
+              Generate Mock Monitors
+            </button>
+          </div>
         </div>
       </div>
     </div>

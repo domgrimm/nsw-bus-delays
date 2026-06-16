@@ -20,10 +20,12 @@ const mockStats: DelayStats = {
   early_count: 10,
   on_time_count: 70,
   delayed_count: 20,
+  cancelled_count: 0,
   average_delay_seconds: 45.5,
   max_delay_seconds: 300,
   on_time_percentage: 70,
   daily_breakdown: [],
+  heatmap: [],
 };
 
 describe("SummaryCards", () => {
@@ -36,7 +38,7 @@ describe("SummaryCards", () => {
 
   it("displays computed values", () => {
     render(<SummaryCards stats={mockStats} />);
-    expect(screen.getByText("45.5s")).toBeInTheDocument();
+    expect(screen.getByText("0:46")).toBeInTheDocument();
     expect(screen.getByText("70.0%")).toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();
   });

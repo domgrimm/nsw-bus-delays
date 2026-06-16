@@ -37,7 +37,7 @@ export interface MonitorCreate {
   user_label?: string;
 }
 
-export type Period = "day" | "week" | "month";
+export type Period = "day" | "week" | "month" | "all_time";
 
 export interface DailyStats {
   date: string;
@@ -46,6 +46,33 @@ export interface DailyStats {
   on_time_count: number;
   delayed_count: number;
   average_delay_seconds: number;
+}
+
+export interface HeatmapCell {
+  day_of_week: number;
+  hour_block: number;
+  average_delay_seconds: number;
+  count: number;
+}
+
+export interface ArrivalBucket {
+  delay_minutes: number;
+  count: number;
+}
+
+export interface PercentileStats {
+  p50: number;
+  p75: number;
+  p90: number;
+  p95: number;
+}
+
+export interface BunchingEvent {
+  scheduled_time: string;
+  actual_time: string;
+  scheduled_headway_minutes: number;
+  actual_headway_minutes: number;
+  delay_minutes: number;
 }
 
 export interface DelayStats {
@@ -61,6 +88,11 @@ export interface DelayStats {
   max_delay_seconds: number;
   on_time_percentage: number;
   daily_breakdown: DailyStats[];
+  heatmap: HeatmapCell[];
+  percentile: PercentileStats | null;
+  arrival_distribution: ArrivalBucket[];
+  weekday_heatmap: HeatmapCell[];
+  weekend_heatmap: HeatmapCell[];
 }
 
 export interface ArrivalRecord {

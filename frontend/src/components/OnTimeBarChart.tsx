@@ -8,9 +8,13 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
+  Cell,
 } from "recharts";
 
 import type { DailyStats } from "@/types";
+
+const OTP_BENCHMARK = 80;
 
 export default function OnTimeBarChart({
   data,
@@ -34,7 +38,30 @@ export default function OnTimeBarChart({
         <XAxis dataKey="date" fontSize={12} />
         <YAxis domain={[0, 100]} unit="%" />
         <Tooltip formatter={(v: number) => `${v}%`} />
-        <Bar dataKey="on_time_percentage" name="On-Time %" fill="#107c41" />
+        <ReferenceLine
+          y={OTP_BENCHMARK}
+          stroke="#d96b00"
+          strokeDasharray="5 5"
+          strokeWidth={1.5}
+          label={{
+            value: `Benchmark ${OTP_BENCHMARK}%`,
+            position: "right",
+            fontSize: 10,
+            fill: "#d96b00",
+          }}
+        />
+        <Bar dataKey="on_time_percentage" name="On-Time %">
+          {chartData.map((entry, index) => (
+            <Cell
+              key={`cell-${index}`}
+              fill={
+                entry.on_time_percentage >= OTP_BENCHMARK
+                  ? "#107c41"
+                  : "#da292b"
+              }
+            />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

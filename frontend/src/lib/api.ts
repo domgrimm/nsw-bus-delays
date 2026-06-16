@@ -1,5 +1,6 @@
 import type {
   ArrivalRecord,
+  BunchingEvent,
   BusRoute,
   BusStop,
   DelayStats,
@@ -79,8 +80,23 @@ export async function deleteMonitor(id: string): Promise<void> {
 export async function getMonitorStats(
   id: string,
   period: Period,
+  mock?: boolean,
 ): Promise<DelayStats> {
-  return fetchJson<DelayStats>(`/api/monitors/${id}/stats?period=${period}`);
+  let url = `/api/monitors/${id}/stats?period=${period}`;
+  if (mock) url += "&mock=true";
+  return fetchJson<DelayStats>(url);
+}
+
+export async function generateMockMonitors(): Promise<{ monitor_ids: string[] }> {
+  return fetchJson<{ monitor_ids: string[] }>("/api/mock/generate", {
+    method: "POST",
+  });
+}
+
+export async function getMockRoutes(): Promise<
+  { route_id: string; route_number: string; name: string }[]
+> {
+  return fetchJson("/api/mock/routes");
 }
 
 export async function getMonitorArrivals(
@@ -95,4 +111,14 @@ export async function getMonitorArrivals(
   return fetchJson<ArrivalRecord[]>(
     `/api/monitors/${id}/arrivals${qs ? `?${qs}` : ""}`,
   );
+}
+
+export async function getMonitorBunching(
+  id: string,
+  period: Period,
+  mock?: boolean,
+): Promise<BunchingEvent[]> {
+  let url = `/api/monitors/${id}/bunching?period=${period}`;
+  if (mock) url += "&mock=true";
+  return fetchJson<BunchingEvent[]>(url);
 }

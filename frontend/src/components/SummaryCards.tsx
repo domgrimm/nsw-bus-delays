@@ -8,6 +8,13 @@ function formatDelay(seconds: number): string {
   return `${sign}${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function formatDelayMin(seconds: number): string {
+  const m = Math.round(seconds / 60);
+  if (m === 0) return "0 min";
+  if (m < 0) return `${Math.abs(m)} min early`;
+  return `+${m} min`;
+}
+
 export default function SummaryCards({ stats }: { stats: DelayStats }) {
   const cards = [
     {
@@ -31,6 +38,17 @@ export default function SummaryCards({ stats }: { stats: DelayStats }) {
       color: "var(--color-ink)",
     },
   ];
+
+  if (stats.percentile && stats.percentile.p90 !== undefined) {
+    const p90 = stats.percentile.p90;
+    const p95 = stats.percentile.p95;
+    const buffer = Math.max(0, Math.round(p95 / 60));
+    cards.push({
+      label: "90% Buffer",
+      value: buffer === 0 ? "On schedule" : `+${buffer} min`,
+      color: buffer <= 2 ? "var(--color-status-success)" : buffer <= 5 ? "var(--color-status-warning)" : "var(--color-status-danger)",
+    });
+  }
 
   return (
     <div className="summary-cards">

@@ -39,6 +39,33 @@ class DailyStats(BaseModel):
     average_delay_seconds: float
 
 
+class HeatmapCell(BaseModel):
+    day_of_week: int
+    hour_block: int
+    average_delay_seconds: float
+    count: int
+
+
+class ArrivalBucket(BaseModel):
+    delay_minutes: int
+    count: int
+
+
+class PercentileStats(BaseModel):
+    p50: float
+    p75: float
+    p90: float
+    p95: float
+
+
+class BunchingEvent(BaseModel):
+    scheduled_time: datetime
+    actual_time: datetime
+    scheduled_headway_minutes: float
+    actual_headway_minutes: float
+    delay_minutes: float
+
+
 class DelayStats(BaseModel):
     period: str
     period_start: datetime
@@ -52,6 +79,11 @@ class DelayStats(BaseModel):
     max_delay_seconds: int
     on_time_percentage: float
     daily_breakdown: list[DailyStats]
+    heatmap: list[HeatmapCell] = []
+    percentile: PercentileStats | None = None
+    arrival_distribution: list[ArrivalBucket] = []
+    weekday_heatmap: list[HeatmapCell] = []
+    weekend_heatmap: list[HeatmapCell] = []
 
 
 class StopResponse(BaseModel):
