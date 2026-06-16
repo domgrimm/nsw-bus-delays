@@ -72,17 +72,17 @@ function MonitorCard({
   return (
     <div className="card interactive-card monitor-card">
       <Link href={`/monitor/${monitor.id}`} className="monitor-card__body">
-        <h3 className="monitor-card__title">
-          {monitor.stop_name || monitor.stop_id}
-        </h3>
-        <p className="monitor-card__meta">
-          Route {monitor.route_number} &middot;{" "}
+        <div className="monitor-card__top">
+          <span className="monitor-card__route-badge">{monitor.route_number}</span>
           <span
             className={`monitor-card__status ${monitor.active ? "monitor-card__status--active" : "monitor-card__status--inactive"}`}
           >
             {monitor.active ? "Active" : "Inactive"}
           </span>
-        </p>
+        </div>
+        <h3 className="monitor-card__title">
+          {monitor.stop_name || monitor.stop_id}
+        </h3>
       </Link>
 
       <div className="monitor-card__actions">

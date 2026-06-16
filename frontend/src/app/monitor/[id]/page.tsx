@@ -89,11 +89,14 @@ function DashboardInner() {
           <Link href="/" className="page-header__back">
             &larr; Back to Monitors
           </Link>
-          <h1 style={{ marginBottom: "0.25rem" }}>
-            {monitor.stop_name || `Stop ${monitor.stop_id}`}
-          </h1>
+          <div className="page-header__title-row">
+            <span className="monitor-card__route-badge">{monitor.route_number}</span>
+            <h1 className="page-heading" style={{ margin: 0 }}>
+              {monitor.stop_name || `Stop ${monitor.stop_id}`}
+            </h1>
+          </div>
           <p className="page-header__sub">
-            Route {monitor.route_number} &middot; Stop ID: {monitor.stop_id} &middot;{" "}
+            Stop ID: {monitor.stop_id} &middot;{" "}
             <Link href={`/monitor/${id}/history`} className="text-link">
               View History
             </Link>
