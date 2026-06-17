@@ -105,30 +105,50 @@ def _compute_heatmap_with_filter(
 
 
 def compute_stats(
-    db: Session, monitor_id: str, period: str = "day"
+    db: Session,
+    monitor_id: str,
+    period: str = "day",
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
 ) -> DelayStats:
     trip = db.query(MonitoredTrip).filter(MonitoredTrip.id == monitor_id).first()
     if not trip:
         raise ValueError("Monitor not found")
 
     now = datetime.now(timezone.utc)
-    if period == "day":
+    custom_range = from_date is not None and to_date is not None
+
+    if custom_range:
+        start = from_date
+        end = to_date
+        period_label = "custom"
+    elif period == "day":
         start = now - timedelta(days=1)
+        end = now
+        period_label = period
     elif period == "week":
         start = now - timedelta(days=7)
+        end = now
+        period_label = period
     elif period == "month":
         start = now - timedelta(days=30)
+        end = now
+        period_label = period
     elif period == "all_time":
         start = datetime.min.replace(tzinfo=timezone.utc)
+        end = now
+        period_label = period
     else:
         start = now - timedelta(days=7)
+        end = now
+        period_label = period
 
     records = (
         db.query(ArrivalRecord)
         .filter(
             ArrivalRecord.monitored_trip_id == trip.id,
             ArrivalRecord.recorded_at >= start,
-            ArrivalRecord.recorded_at <= now,
+            ArrivalRecord.recorded_at <= end,
         )
         .all()
     )
@@ -147,28 +167,23 @@ def compute_stats(
     percentile = _compute_percentiles(delays) if delays else None
     arrival_distribution = _compute_arrival_distribution(delays)
 
-    daily_breakdown = (
-        _daily_breakdown(records)
-        if period in ("week", "month", "all_time")
-        else []
+    show_breakdown = period_label in ("week", "month", "all_time") or (
+        custom_range and (end - start).days >= 2
     )
 
-    heatmap = (
-        _compute_heatmap_with_filter(records)
-        if period in ("week", "month", "all_time")
-        else []
-    )
+    daily_breakdown = _daily_breakdown(records) if show_breakdown else []
 
+    heatmap = _compute_heatmap_with_filter(records) if show_breakdown else []
     weekday_heatmap: list[HeatmapCell] = []
     weekend_heatmap: list[HeatmapCell] = []
-    if period in ("week", "month", "all_time"):
+    if show_breakdown:
         weekday_heatmap = _compute_heatmap_with_filter(records, dow_filter={0, 1, 2, 3, 4})
         weekend_heatmap = _compute_heatmap_with_filter(records, dow_filter={5, 6})
 
     return DelayStats(
-        period=period,
+        period=period_label,
         period_start=start,
-        period_end=now,
+        period_end=end,
         total_arrivals=total,
         early_count=early,
         on_time_count=on_time,
@@ -217,30 +232,44 @@ def _daily_breakdown(records: list[ArrivalRecord]) -> list[DailyStats]:
 
 
 def compute_bunching(
-    db: Session, monitor_id: str, period: str = "week"
+    db: Session,
+    monitor_id: str,
+    period: str = "week",
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
 ) -> list[BunchingEvent]:
     trip = db.query(MonitoredTrip).filter(MonitoredTrip.id == monitor_id).first()
     if not trip:
         raise ValueError("Monitor not found")
 
     now = datetime.now(timezone.utc)
-    if period == "day":
+    custom_range = from_date is not None and to_date is not None
+
+    if custom_range:
+        start = from_date
+        end = to_date
+    elif period == "day":
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now
     elif period == "week":
         start = now - timedelta(days=7)
+        end = now
     elif period == "month":
         start = now - timedelta(days=30)
+        end = now
     elif period == "all_time":
         start = datetime.min.replace(tzinfo=timezone.utc)
+        end = now
     else:
         start = now - timedelta(days=7)
+        end = now
 
     records = (
         db.query(ArrivalRecord)
         .filter(
             ArrivalRecord.monitored_trip_id == trip.id,
             ArrivalRecord.recorded_at >= start,
-            ArrivalRecord.recorded_at <= now,
+            ArrivalRecord.recorded_at <= end,
             ArrivalRecord.status != "cancelled",
         )
         .order_by(ArrivalRecord.scheduled_arrival.asc())

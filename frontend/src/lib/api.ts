@@ -82,8 +82,13 @@ export async function deleteMonitor(id: string): Promise<void> {
 export async function getMonitorStats(
   id: string,
   period: Period,
+  from?: string,
+  to?: string,
 ): Promise<DelayStats> {
-  return fetchJson<DelayStats>(`/api/monitors/${id}/stats?period=${period}`);
+  const params = new URLSearchParams({ period });
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  return fetchJson<DelayStats>(`/api/monitors/${id}/stats?${params}`);
 }
 
 export async function getMonitorArrivals(
@@ -103,8 +108,13 @@ export async function getMonitorArrivals(
 export async function getMonitorBunching(
   id: string,
   period: Period,
+  from?: string,
+  to?: string,
 ): Promise<BunchingEvent[]> {
-  return fetchJson<BunchingEvent[]>(`/api/monitors/${id}/bunching?period=${period}`);
+  const params = new URLSearchParams({ period });
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  return fetchJson<BunchingEvent[]>(`/api/monitors/${id}/bunching?${params}`);
 }
 
 export async function getRouteTimetable(
@@ -121,9 +131,13 @@ export async function getScheduledDepartureStats(
   scheduledTime: string,
   period: Period,
   serviceType?: string,
+  from?: string,
+  to?: string,
 ): Promise<ScheduledDepartureStats> {
   const params = new URLSearchParams({ scheduled_time: scheduledTime, period });
   if (serviceType) params.set("service_type", serviceType);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
   return fetchJson<ScheduledDepartureStats>(
     `/api/monitors/${id}/scheduled-departure-stats?${params}`,
   );

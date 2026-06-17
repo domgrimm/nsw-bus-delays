@@ -126,11 +126,19 @@ async def delete_monitor(monitor_id: str, db: Session = Depends(get_db)):
 @router.get("/monitors/{monitor_id}/stats")
 async def get_monitor_stats(
     monitor_id: str,
-    period: str = Query("day", pattern="^(day|week|month|all_time)$"),
+    period: str = Query("day", pattern="^(day|week|month|all_time|custom)$"),
+    from_date: str | None = Query(None, alias="from"),
+    to_date: str | None = Query(None, alias="to"),
     db: Session = Depends(get_db),
 ):
     try:
-        return compute_stats(db, monitor_id, period)
+        from_dt: datetime | None = None
+        to_dt: datetime | None = None
+        if from_date:
+            from_dt = datetime.fromisoformat(from_date)
+        if to_date:
+            to_dt = datetime.fromisoformat(to_date)
+        return compute_stats(db, monitor_id, period, from_date=from_dt, to_date=to_dt)
     except ValueError:
         raise HTTPException(status_code=404, detail="Monitor not found")
 
@@ -138,11 +146,19 @@ async def get_monitor_stats(
 @router.get("/monitors/{monitor_id}/bunching")
 async def get_monitor_bunching(
     monitor_id: str,
-    period: str = Query("week", pattern="^(day|week|month|all_time)$"),
+    period: str = Query("week", pattern="^(day|week|month|all_time|custom)$"),
+    from_date: str | None = Query(None, alias="from"),
+    to_date: str | None = Query(None, alias="to"),
     db: Session = Depends(get_db),
 ):
     try:
-        return compute_bunching(db, monitor_id, period)
+        from_dt: datetime | None = None
+        to_dt: datetime | None = None
+        if from_date:
+            from_dt = datetime.fromisoformat(from_date)
+        if to_date:
+            to_dt = datetime.fromisoformat(to_date)
+        return compute_bunching(db, monitor_id, period, from_date=from_dt, to_date=to_dt)
     except ValueError:
         raise HTTPException(status_code=404, detail="Monitor not found")
 
@@ -198,8 +214,10 @@ async def get_monitor_arrivals(
 async def get_scheduled_departure_stats(
     monitor_id: str,
     scheduled_time: str = Query(..., pattern=r"^\d{1,2}:\d{2}$"),
-    period: str = Query("week", pattern="^(day|week|month|all_time)$"),
+    period: str = Query("week", pattern="^(day|week|month|all_time|custom)$"),
     service_type: str | None = Query(None, pattern="^(weekday|saturday|sunday)$"),
+    from_date: str | None = Query(None, alias="from"),
+    to_date: str | None = Query(None, alias="to"),
     db: Session = Depends(get_db),
 ):
     trip = db.query(MonitoredTrip).filter(MonitoredTrip.id == monitor_id).first()
@@ -216,21 +234,37 @@ async def get_scheduled_departure_stats(
     from datetime import timezone, timedelta
 
     now = datetime.now(timezone.utc)
+    custom_range = from_date is not None and to_date is not None
 
-    if period == "day":
+    if custom_range:
+        start = datetime.fromisoformat(from_date)
+        end = datetime.fromisoformat(to_date)
+        period_label = "custom"
+    elif period == "day":
         start = now - timedelta(days=1)
+        end = now
+        period_label = period
     elif period == "week":
         start = now - timedelta(days=7)
+        end = now
+        period_label = period
     elif period == "month":
         start = now - timedelta(days=30)
+        end = now
+        period_label = period
     elif period == "all_time":
         start = datetime.min.replace(tzinfo=timezone.utc)
+        end = now
+        period_label = period
     else:
         start = now - timedelta(days=7)
+        end = now
+        period_label = period
 
     query = db.query(ArrivalRecord).filter(
         ArrivalRecord.monitored_trip_id == trip.id,
         ArrivalRecord.recorded_at >= start,
+        ArrivalRecord.recorded_at <= end,
     )
 
     tz_col = text("arrival_records.scheduled_arrival AT TIME ZONE 'Australia/Sydney'")
@@ -260,9 +294,9 @@ async def get_scheduled_departure_stats(
         return {
             "service_type": service_type,
             "scheduled_time": scheduled_time,
-            "period": period,
+            "period": period_label,
             "period_start": start.isoformat(),
-            "period_end": now.isoformat(),
+            "period_end": end.isoformat(),
             "total_arrivals": 0,
             "early_count": 0,
             "on_time_count": 0,
@@ -297,9 +331,9 @@ async def get_scheduled_departure_stats(
     return {
         "service_type": service_type,
         "scheduled_time": scheduled_time,
-        "period": period,
+        "period": period_label,
         "period_start": start.isoformat(),
-        "period_end": now.isoformat(),
+        "period_end": end.isoformat(),
         "total_arrivals": total,
         "early_count": early,
         "on_time_count": on_time,

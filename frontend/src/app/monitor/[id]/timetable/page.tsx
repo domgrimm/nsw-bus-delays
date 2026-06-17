@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -74,28 +74,97 @@ function formatX(time: string): string {
   });
 }
 
+function pad(num: number): string {
+  return String(num).padStart(2, "0");
+}
+
+function toDatetimeLocal(date: Date): string {
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+function defaultCustomRange(): { from: string; to: string } {
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  return { from: toDatetimeLocal(weekAgo), to: toDatetimeLocal(now) };
+}
+
 function PeriodSelector({
   value,
   onChange,
+  customFrom,
+  setCustomFrom,
+  customTo,
+  setCustomTo,
 }: {
   value: Period;
   onChange: (p: Period) => void;
+  customFrom: string;
+  setCustomFrom: (v: string) => void;
+  customTo: string;
+  setCustomTo: (v: string) => void;
 }) {
-  const periods: Period[] = ["day", "week", "month", "all_time"];
+  const periods: { value: Period; label: string }[] = [
+    { value: "day", label: "Day" },
+    { value: "week", label: "Week" },
+    { value: "month", label: "Month" },
+    { value: "all_time", label: "All Time" },
+    { value: "custom", label: "Custom" },
+  ];
+
+  const handlePeriodChange = useCallback(
+    (p: Period) => {
+      if (p === "custom" && !customFrom && !customTo) {
+        const range = defaultCustomRange();
+        setCustomFrom(range.from);
+        setCustomTo(range.to);
+      }
+      onChange(p);
+    },
+    [customFrom, customTo, setCustomFrom, setCustomTo, onChange],
+  );
+
   return (
-    <div className="segmented-control" role="tablist" aria-label="Time period">
-      {periods.map((p) => (
-        <button
-          key={p}
-          onClick={() => onChange(p)}
-          disabled={p === value}
-          className={p === value ? "active" : ""}
-          role="tab"
-          aria-selected={p === value}
-        >
-          {p === "all_time" ? "All Time" : p.charAt(0).toUpperCase() + p.slice(1)}
-        </button>
-      ))}
+    <div className="period-selector-group">
+      <div className="segmented-control" role="tablist" aria-label="Time period">
+        {periods.map(({ value: pval, label }) => (
+          <button
+            key={pval}
+            onClick={() => handlePeriodChange(pval)}
+            disabled={pval === value}
+            className={pval === value ? "active" : ""}
+            role="tab"
+            aria-selected={pval === value}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {value === "custom" && (
+        <div className="date-range-row">
+          <label className="date-range-label">
+            From
+            <input
+              type="datetime-local"
+              className="date-range-input"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+            />
+          </label>
+          <label className="date-range-label">
+            To
+            <input
+              type="datetime-local"
+              className="date-range-input"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
@@ -151,6 +220,8 @@ export default function TimetableComparisonPage() {
   const [serviceType, setServiceType] = useState<ServiceType>("weekday");
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("week");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   const { data: monitor, isLoading: monitorLoading, isError: monitorError } = useQuery({
     queryKey: ["monitor", id],
@@ -168,10 +239,14 @@ export default function TimetableComparisonPage() {
 
   const times = timetable?.[serviceType] ?? [];
 
+  const isCustom = period === "custom";
+  const fromParam = isCustom ? customFrom : undefined;
+  const toParam = isCustom ? customTo : undefined;
+
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["scheduled-departure-stats", id, selectedTime, period, serviceType],
+    queryKey: ["scheduled-departure-stats", id, selectedTime, period, serviceType, customFrom, customTo],
     queryFn: () =>
-      getScheduledDepartureStats(id, selectedTime!, period, serviceType),
+      getScheduledDepartureStats(id, selectedTime!, period, serviceType, fromParam, toParam),
     enabled: !!selectedTime,
     refetchInterval: 60_000,
   });
@@ -269,7 +344,14 @@ export default function TimetableComparisonPage() {
                   <h2 className="panel-title" style={{ margin: 0 }}>
                     {SERVICE_LABELS[serviceType]} at {selectedTime}
                   </h2>
-                  <PeriodSelector value={period} onChange={setPeriod} />
+                  <PeriodSelector
+                    value={period}
+                    onChange={setPeriod}
+                    customFrom={customFrom}
+                    setCustomFrom={setCustomFrom}
+                    customTo={customTo}
+                    setCustomTo={setCustomTo}
+                  />
                 </div>
 
                 {statsLoading && <Skeleton lines={3} />}

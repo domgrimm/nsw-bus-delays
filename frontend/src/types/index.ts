@@ -37,7 +37,7 @@ export interface MonitorCreate {
   user_label?: string;
 }
 
-export type Period = "day" | "week" | "month" | "all_time";
+export type Period = "day" | "week" | "month" | "all_time" | "custom";
 
 export interface DailyStats {
   date: string;

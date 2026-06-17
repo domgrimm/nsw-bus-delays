@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -21,36 +21,104 @@ import HeatMap from "@/components/HeatMap";
 
 const StopMap = dynamic(() => import("@/components/StopMap"), { ssr: false });
 
-function PeriodSelector({
-  value,
-  onChange,
-}: {
-  value: Period;
-  onChange: (p: Period) => void;
-}) {
-  const periods: Period[] = ["day", "week", "month", "all_time"];
+function pad(num: number): string {
+  return String(num).padStart(2, "0");
+}
+
+function toDatetimeLocal(date: Date): string {
   return (
-    <div className="segmented-control" role="tablist" aria-label="Time period">
-      {periods.map((p) => (
-        <button
-          key={p}
-          onClick={() => onChange(p)}
-          disabled={p === value}
-          className={p === value ? "active" : ""}
-          role="tab"
-          aria-selected={p === value}
-        >
-          {p === "all_time" ? "All Time" : p.charAt(0).toUpperCase() + p.slice(1)}
-        </button>
-      ))}
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+function defaultCustomRange(): { from: string; to: string } {
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  return { from: toDatetimeLocal(weekAgo), to: toDatetimeLocal(now) };
+}
+
+function PeriodSelector() {
+  const {
+    selectedPeriod,
+    setSelectedPeriod,
+    customFrom,
+    setCustomFrom,
+    customTo,
+    setCustomTo,
+  } = useUI();
+
+  const periods: { value: Period; label: string }[] = [
+    { value: "day", label: "Day" },
+    { value: "week", label: "Week" },
+    { value: "month", label: "Month" },
+    { value: "all_time", label: "All Time" },
+    { value: "custom", label: "Custom" },
+  ];
+
+  const handlePeriodChange = useCallback(
+    (p: Period) => {
+      if (p === "custom" && !customFrom && !customTo) {
+        const range = defaultCustomRange();
+        setCustomFrom(range.from);
+        setCustomTo(range.to);
+      }
+      setSelectedPeriod(p);
+    },
+    [customFrom, customTo, setCustomFrom, setCustomTo, setSelectedPeriod],
+  );
+
+  return (
+    <div className="period-selector-group">
+      <div className="segmented-control" role="tablist" aria-label="Time period">
+        {periods.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => handlePeriodChange(value)}
+            disabled={value === selectedPeriod}
+            className={value === selectedPeriod ? "active" : ""}
+            role="tab"
+            aria-selected={value === selectedPeriod}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {selectedPeriod === "custom" && (
+        <div className="date-range-row">
+          <label className="date-range-label">
+            From
+            <input
+              type="datetime-local"
+              className="date-range-input"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+            />
+          </label>
+          <label className="date-range-label">
+            To
+            <input
+              type="datetime-local"
+              className="date-range-input"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
 
 function DashboardInner() {
   const { id } = useParams<{ id: string }>();
-  const { selectedPeriod, setSelectedPeriod } = useUI();
+  const { selectedPeriod, customFrom, customTo } = useUI();
   const [showMap, setShowMap] = useState(false);
+
+  const isCustom = selectedPeriod === "custom";
+  const fromParam = isCustom ? customFrom : undefined;
+  const toParam = isCustom ? customTo : undefined;
 
   const { data: monitor, isLoading, isError, error } = useQuery({
     queryKey: ["monitor", id],
@@ -58,8 +126,8 @@ function DashboardInner() {
   });
 
   const { data: stats, isError: statsError, error: statsErr, isLoading: statsLoading } = useQuery({
-    queryKey: ["monitor-stats", id, selectedPeriod],
-    queryFn: () => getMonitorStats(id, selectedPeriod),
+    queryKey: ["monitor-stats", id, selectedPeriod, customFrom, customTo],
+    queryFn: () => getMonitorStats(id, selectedPeriod, fromParam, toParam),
     refetchInterval: 60_000,
   });
 
@@ -70,13 +138,15 @@ function DashboardInner() {
   });
 
   const { data: bunchingData = [] } = useQuery({
-    queryKey: ["monitor-bunching", id, selectedPeriod],
-    queryFn: () => getMonitorBunching(id, selectedPeriod),
+    queryKey: ["monitor-bunching", id, selectedPeriod, customFrom, customTo],
+    queryFn: () => getMonitorBunching(id, selectedPeriod, fromParam, toParam),
     refetchInterval: 60_000,
   });
 
-  const showHeatmap = selectedPeriod === "week" || selectedPeriod === "month" || selectedPeriod === "all_time";
-  const showDailyBreakdown = selectedPeriod === "week" || selectedPeriod === "month" || selectedPeriod === "all_time";
+  const showHeatmap =
+    selectedPeriod === "week" || selectedPeriod === "month" || selectedPeriod === "all_time" || selectedPeriod === "custom";
+  const showDailyBreakdown =
+    selectedPeriod === "week" || selectedPeriod === "month" || selectedPeriod === "all_time" || selectedPeriod === "custom";
 
   if (isLoading) return <Skeleton lines={5} />;
   if (isError) return <p className="error">Error: {error.message}</p>;
@@ -116,7 +186,7 @@ function DashboardInner() {
           >
             {showMap ? "▾ Hide Map" : "▸ Show Map"}
           </button>
-          <PeriodSelector value={selectedPeriod} onChange={setSelectedPeriod} />
+          <PeriodSelector />
         </div>
       </div>
 
@@ -201,7 +271,9 @@ function DashboardInner() {
               <h2 className="panel-title">
                 {selectedPeriod === "all_time"
                   ? "All-Time Delay Heatmap"
-                  : `Delay Heatmap (${selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)})`}
+                  : selectedPeriod === "custom"
+                    ? "Custom Range Delay Heatmap"
+                    : `Delay Heatmap (${selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)})`}
               </h2>
               <HeatMap
                 data={stats.heatmap}
