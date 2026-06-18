@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -36,6 +36,25 @@ function defaultCustomRange(): { from: string; to: string } {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   return { from: toDatetimeLocal(weekAgo), to: toDatetimeLocal(now) };
+}
+
+function periodToRange(
+  selectedPeriod: Period,
+  customFrom: string,
+  customTo: string,
+): [string | undefined, string | undefined] {
+  if (selectedPeriod === "custom") {
+    return [customFrom || undefined, customTo || undefined];
+  }
+  if (selectedPeriod === "all_time") {
+    return [undefined, undefined];
+  }
+  const now = new Date();
+  const offsets: Record<string, number> = { day: 1, week: 7, month: 30 };
+  const days = offsets[selectedPeriod];
+  if (!days) return [undefined, undefined];
+  const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  return [from.toISOString(), now.toISOString()];
 }
 
 function PeriodSelector() {
@@ -116,9 +135,12 @@ function DashboardInner() {
   const { selectedPeriod, customFrom, customTo } = useUI();
   const [showMap, setShowMap] = useState(false);
 
-  const isCustom = selectedPeriod === "custom";
-  const fromParam = isCustom ? customFrom : undefined;
-  const toParam = isCustom ? customTo : undefined;
+  const [arrivalFrom, arrivalTo] = useMemo(
+    () => periodToRange(selectedPeriod, customFrom, customTo),
+    [selectedPeriod, customFrom, customTo],
+  );
+  const statsFrom = selectedPeriod === "custom" ? arrivalFrom : undefined;
+  const statsTo = selectedPeriod === "custom" ? arrivalTo : undefined;
 
   const { data: monitor, isLoading, isError, error } = useQuery({
     queryKey: ["monitor", id],
@@ -127,19 +149,19 @@ function DashboardInner() {
 
   const { data: stats, isError: statsError, error: statsErr, isLoading: statsLoading } = useQuery({
     queryKey: ["monitor-stats", id, selectedPeriod, customFrom, customTo],
-    queryFn: () => getMonitorStats(id, selectedPeriod, fromParam, toParam),
+    queryFn: () => getMonitorStats(id, selectedPeriod, statsFrom, statsTo),
     refetchInterval: 60_000,
   });
 
   const { data: arrivals = [] } = useQuery({
-    queryKey: ["monitor-arrivals", id],
-    queryFn: () => getMonitorArrivals(id),
+    queryKey: ["monitor-arrivals", id, arrivalFrom, arrivalTo],
+    queryFn: () => getMonitorArrivals(id, arrivalFrom, arrivalTo),
     refetchInterval: 60_000,
   });
 
   const { data: bunchingData = [] } = useQuery({
     queryKey: ["monitor-bunching", id, selectedPeriod, customFrom, customTo],
-    queryFn: () => getMonitorBunching(id, selectedPeriod, fromParam, toParam),
+    queryFn: () => getMonitorBunching(id, selectedPeriod, statsFrom, statsTo),
     refetchInterval: 60_000,
   });
 
@@ -266,7 +288,7 @@ function DashboardInner() {
             </div>
           )}
 
-          {showHeatmap && stats && stats.heatmap && stats.heatmap.length > 0 && (
+          {stats && (
             <div className="panel">
               <h2 className="panel-title">
                 {selectedPeriod === "all_time"

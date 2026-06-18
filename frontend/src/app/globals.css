@@ -650,6 +650,21 @@ button.outline.active {
   border-color: var(--color-ink);
 }
 
+/* === Pagination === */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.pagination__info {
+  font-size: 0.85rem;
+  color: var(--color-status-muted);
+  font-weight: 500;
+}
+
 /* === Toast (neutral palette to respect signal rarity) === */
 .toast-container {
   position: fixed;

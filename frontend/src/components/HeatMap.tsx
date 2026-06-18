@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useLayoutEffect } from "react";
+import { useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
 import type { HeatmapCell } from "@/types";
 import { formatDelay } from "@/lib/format";
 
@@ -59,11 +59,11 @@ function getSvgDims(rows: number) {
 function HeatMapGrid({
   data,
   dayLabels,
-  rowOffset,
+  dowValues,
 }: {
   data: HeatmapCell[];
   dayLabels: string[];
-  rowOffset: number;
+  dowValues: number[];
 }) {
   const [hovered, setHovered] = useState<HeatmapCell | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -134,7 +134,9 @@ function HeatMapGrid({
             </text>
           ))}
 
-          {dayLabels.map((label: string, row: number) => (
+          {dayLabels.map((label: string, row: number) => {
+            const dow = dowValues[row];
+            return (
             <g key={`row-${row}`}>
               <text
                 x={LEFT_PAD - 4}
@@ -147,7 +149,7 @@ function HeatMapGrid({
                 {label}
               </text>
               {Array.from({ length: 8 }, (_, col) => {
-                const key = `${row + rowOffset}-${col}`;
+                const key = `${dow}-${col}`;
                 const cell = lookup.get(key);
                 const delay = cell ? cell.average_delay_seconds : 0;
                 const hasData = !!cell;
@@ -182,14 +184,15 @@ function HeatMapGrid({
                 );
               })}
             </g>
-          ))}
+            );
+          })}
         </svg>
       </div>
 
       {hovered && (
         <div ref={tooltipRef} className="heatmap-tooltip" style={{ position: "fixed", left: mousePos.x + 12, top: mousePos.y - 10 }}>
           <div className="heatmap-tooltip__title">
-            {dayLabels[hovered.day_of_week] || DAY_LABELS[hovered.day_of_week]},{" "}
+            {dayLabels[dowValues.indexOf(hovered.day_of_week)] ?? DAY_LABELS[hovered.day_of_week]},{" "}
             {HOUR_LABELS[hovered.hour_block]}–{HOUR_LABELS[hovered.hour_block + 1] || "00:00"}
           </div>
           <div>Avg delay: {formatDelay(hovered.average_delay_seconds)}</div>
@@ -225,6 +228,14 @@ function aggregateByGroup(
   ];
 }
 
+function uniqueSortedDows(data: HeatmapCell[]): number[] {
+  const dows = new Set<number>();
+  for (const cell of data) {
+    dows.add(cell.day_of_week);
+  }
+  return Array.from(dows).sort();
+}
+
 export default function HeatMap({
   data,
   weekdayData,
@@ -236,6 +247,11 @@ export default function HeatMap({
 }) {
   const hasSplit = weekdayData && weekdayData.length > 0 && weekendData && weekendData.length > 0;
   const [view, setView] = useState<"all" | "grouped">("all");
+
+  const activeDows = useMemo(() => uniqueSortedDows(data), [data]);
+  const dayLabels = useMemo(() => activeDows.map((d) => DAY_LABELS[d]), [activeDows]);
+
+  const showGrouped = view === "grouped" && hasSplit;
 
   return (
     <div>
@@ -256,13 +272,16 @@ export default function HeatMap({
         </button>
       </div>
 
-      {view === "all" && <HeatMapGrid data={data} dayLabels={DAY_LABELS} rowOffset={0} />}
-      {view === "grouped" && hasSplit && (
+      {showGrouped ? (
         <HeatMapGrid
           data={aggregateByGroup(weekdayData!, weekendData!)}
           dayLabels={["Weekdays", "Weekends"]}
-          rowOffset={0}
+          dowValues={[0, 1]}
         />
+      ) : activeDows.length > 0 ? (
+        <HeatMapGrid data={data} dayLabels={dayLabels} dowValues={activeDows} />
+      ) : (
+        <p className="muted">No heatmap data available for this period.</p>
       )}
 
       <div className="heatmap-legend">

@@ -173,10 +173,10 @@ def compute_stats(
 
     daily_breakdown = _daily_breakdown(records) if show_breakdown else []
 
-    heatmap = _compute_heatmap_with_filter(records) if show_breakdown else []
+    heatmap = _compute_heatmap_with_filter(records)
     weekday_heatmap: list[HeatmapCell] = []
     weekend_heatmap: list[HeatmapCell] = []
-    if show_breakdown:
+    if records:
         weekday_heatmap = _compute_heatmap_with_filter(records, dow_filter={0, 1, 2, 3, 4})
         weekend_heatmap = _compute_heatmap_with_filter(records, dow_filter={5, 6})
 
