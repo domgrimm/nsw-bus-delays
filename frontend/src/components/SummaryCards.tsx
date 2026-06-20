@@ -32,6 +32,11 @@ export default function SummaryCards({ stats }: { stats: DelayStats }) {
       variant: stats.cancelled_count > 0 ? "danger" : "muted",
     },
     {
+      label: "No Tracking",
+      value: stats.no_tracking_count.toLocaleString(),
+      variant: stats.no_tracking_count > 0 ? "warning" : "muted",
+    },
+    {
       label: "Total Arrivals",
       value: stats.total_arrivals.toLocaleString(),
       variant: "ink",

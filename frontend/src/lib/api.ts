@@ -4,6 +4,7 @@ import type {
   BusRoute,
   BusStop,
   DelayStats,
+  LiveDeparture,
   Monitor,
   MonitorCreate,
   Period,
@@ -140,5 +141,14 @@ export async function getScheduledDepartureStats(
   if (to) params.set("to", to);
   return fetchJson<ScheduledDepartureStats>(
     `/api/monitors/${id}/scheduled-departure-stats?${params}`,
+  );
+}
+
+export async function getMonitorDepartures(
+  id: string,
+  maxResults: number = 60,
+): Promise<LiveDeparture[]> {
+  return fetchJson<LiveDeparture[]>(
+    `/api/monitors/${id}/departures?max_results=${maxResults}`,
   );
 }

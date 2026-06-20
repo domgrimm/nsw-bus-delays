@@ -71,12 +71,16 @@ def _compute_heatmap_with_filter(
         if hasattr(r, "status") and hasattr(r.status, "value"):
             if r.status.value == "cancelled":
                 continue
+            if r.status.value == "no_tracking":
+                continue
             delay = r.delay_seconds
             local = r.recorded_at.astimezone(SYDNEY_TZ)
             dow = local.weekday()
             hb = local.hour // 3
         else:
             if r.get("status") == "cancelled":
+                continue
+            if r.get("status") == "no_tracking":
                 continue
             delay = r["delay_seconds"]
             ts = r["recorded_at"]
@@ -158,11 +162,13 @@ def compute_stats(
     on_time = sum(1 for r in records if r.status.value == "on_time")
     delayed = sum(1 for r in records if r.status.value == "delayed")
     cancelled = sum(1 for r in records if r.status.value == "cancelled")
-    avg_delay = sum(r.delay_seconds for r in records) / total if total else 0
+    no_tracking = sum(1 for r in records if r.status.value == "no_tracking")
+    valid_for_avg = [r for r in records if r.status.value not in ("cancelled", "no_tracking")]
+    avg_delay = sum(r.delay_seconds for r in valid_for_avg) / len(valid_for_avg) if valid_for_avg else 0
     max_delay = max((r.delay_seconds for r in records), default=0)
     on_time_pct = (on_time / total * 100) if total else 0
 
-    non_cancelled = [r for r in records if r.status.value != "cancelled"]
+    non_cancelled = [r for r in records if r.status.value != "cancelled" and r.status.value != "no_tracking"]
     delays = [float(r.delay_seconds) for r in non_cancelled]
     percentile = _compute_percentiles(delays) if delays else None
     arrival_distribution = _compute_arrival_distribution(delays)
@@ -189,6 +195,7 @@ def compute_stats(
         on_time_count=on_time,
         delayed_count=delayed,
         cancelled_count=cancelled,
+        no_tracking_count=no_tracking,
         average_delay_seconds=round(avg_delay, 2),
         max_delay_seconds=max_delay,
         on_time_percentage=round(on_time_pct, 2),
@@ -215,7 +222,9 @@ def _daily_breakdown(records: list[ArrivalRecord]) -> list[DailyStats]:
         early = sum(1 for r in day_records if r.status.value == "early")
         on_time = sum(1 for r in day_records if r.status.value == "on_time")
         delayed = sum(1 for r in day_records if r.status.value == "delayed")
-        avg = sum(r.delay_seconds for r in day_records) / total if total else 0
+        no_tracking = sum(1 for r in day_records if r.status.value == "no_tracking")
+        valid = [r for r in day_records if r.status.value not in ("cancelled", "no_tracking")]
+        avg = sum(r.delay_seconds for r in valid) / len(valid) if valid else 0
 
         result.append(
             DailyStats(
@@ -224,6 +233,7 @@ def _daily_breakdown(records: list[ArrivalRecord]) -> list[DailyStats]:
                 early_count=early,
                 on_time_count=on_time,
                 delayed_count=delayed,
+                no_tracking_count=no_tracking,
                 average_delay_seconds=round(avg, 2),
             )
         )
@@ -271,6 +281,7 @@ def compute_bunching(
             ArrivalRecord.recorded_at >= start,
             ArrivalRecord.recorded_at <= end,
             ArrivalRecord.status != "cancelled",
+            ArrivalRecord.status != "no_tracking",
         )
         .order_by(ArrivalRecord.scheduled_arrival.asc())
         .all()

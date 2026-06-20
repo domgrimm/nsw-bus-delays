@@ -21,6 +21,7 @@ const mockStats: DelayStats = {
   on_time_count: 70,
   delayed_count: 20,
   cancelled_count: 0,
+  no_tracking_count: 0,
   average_delay_seconds: 45.5,
   max_delay_seconds: 300,
   on_time_percentage: 70,

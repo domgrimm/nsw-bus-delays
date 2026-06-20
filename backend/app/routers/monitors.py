@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import ArrivalRecord, BusRoute, BusStop, MonitoredTrip
 from app.schemas import (
     ArrivalRecordResponse,
+    LiveDepartureResponse,
     MonitorCreate,
     MonitorResponse,
 )
@@ -302,6 +303,7 @@ async def get_scheduled_departure_stats(
             "on_time_count": 0,
             "delayed_count": 0,
             "cancelled_count": 0,
+            "no_tracking_count": 0,
             "average_delay_seconds": 0,
             "max_delay_seconds": 0,
             "on_time_percentage": 0,
@@ -312,6 +314,7 @@ async def get_scheduled_departure_stats(
     on_time = sum(1 for r in records if r.status.value == "on_time")
     delayed = sum(1 for r in records if r.status.value == "delayed")
     cancelled = sum(1 for r in records if r.status.value == "cancelled")
+    no_tracking = sum(1 for r in records if r.status.value == "no_tracking")
     avg_delay = sum(r.delay_seconds for r in records) / total if total else 0
     max_delay = max((r.delay_seconds for r in records), default=0)
     on_time_pct = (on_time / total * 100) if total else 0
@@ -339,8 +342,51 @@ async def get_scheduled_departure_stats(
         "on_time_count": on_time,
         "delayed_count": delayed,
         "cancelled_count": cancelled,
+        "no_tracking_count": no_tracking,
         "average_delay_seconds": round(avg_delay, 2),
         "max_delay_seconds": max_delay,
         "on_time_percentage": round(on_time_pct, 2),
         "arrivals": arrival_responses,
     }
+
+
+@router.get("/monitors/{monitor_id}/departures", response_model=list[LiveDepartureResponse])
+async def get_departures(
+    monitor_id: str,
+    max_results: int = Query(default=60, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    trip = (
+        db.query(MonitoredTrip)
+        .options(joinedload(MonitoredTrip.stop), joinedload(MonitoredTrip.route))
+        .filter(MonitoredTrip.id == monitor_id)
+        .first()
+    )
+    if not trip:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+
+    client = TfNSWClient()
+    try:
+        departures = await client.get_departures(
+            stop_id=trip.stop.stop_id,
+            route_id=trip.route.route_id,
+            max_results=max_results,
+            lookback_minutes=0,
+        )
+    finally:
+        await client.close()
+
+    return [
+        LiveDepartureResponse(
+            trip_id=d.trip_id,
+            route_id=d.route_id,
+            route_number=d.route_number,
+            description=d.description,
+            destination_name=d.destination_name,
+            scheduled_departure=d.scheduled_departure,
+            estimated_departure=d.estimated_departure,
+            is_cancelled=d.is_cancelled,
+            has_tracking=d.has_tracking,
+        )
+        for d in departures
+    ]

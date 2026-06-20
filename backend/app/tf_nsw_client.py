@@ -28,6 +28,7 @@ class TfNSWDeparture:
     scheduled_departure: str
     estimated_departure: str | None
     is_cancelled: bool = False
+    has_tracking: bool = True
 
 
 class TfNSWClient:
@@ -180,6 +181,7 @@ class TfNSWClient:
                     scheduled_departure=scheduled,
                     estimated_departure=estimated,
                     is_cancelled=ev.get("isCancelled", False),
+                    has_tracking=bool(ev.get("departureTimeEstimated")),
                 )
             )
         return departures

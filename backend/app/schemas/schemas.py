@@ -36,6 +36,7 @@ class DailyStats(BaseModel):
     early_count: int
     on_time_count: int
     delayed_count: int
+    no_tracking_count: int
     average_delay_seconds: float
 
 
@@ -77,6 +78,7 @@ class DelayStats(BaseModel):
     on_time_count: int
     delayed_count: int
     cancelled_count: int
+    no_tracking_count: int
     average_delay_seconds: float
     max_delay_seconds: int
     on_time_percentage: float
@@ -106,3 +108,15 @@ class ArrivalRecordResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class LiveDepartureResponse(BaseModel):
+    trip_id: str
+    route_id: str
+    route_number: str
+    description: str
+    destination_name: str
+    scheduled_departure: str
+    estimated_departure: str | None
+    is_cancelled: bool
+    has_tracking: bool

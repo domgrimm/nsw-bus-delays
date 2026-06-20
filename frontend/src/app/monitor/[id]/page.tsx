@@ -193,8 +193,12 @@ function DashboardInner() {
               View History
             </Link>
             {" "}&middot;{" "}
+            <Link href={`/monitor/${id}/live`} className="text-link">
+              Timetable
+            </Link>
+            {" "}&middot;{" "}
             <Link href={`/monitor/${id}/timetable`} className="text-link">
-              Timetable Comparison
+              Scheduled Departure Stats
             </Link>
           </p>
         </div>

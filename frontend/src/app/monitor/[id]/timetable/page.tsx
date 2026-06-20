@@ -55,6 +55,7 @@ function badgeVariant(status: string): string {
   if (normalized === "delayed") return "danger";
   if (normalized === "early") return "primary";
   if (normalized === "cancelled") return "muted";
+  if (normalized === "no_tracking") return "warning";
   return "success";
 }
 
@@ -197,6 +198,11 @@ function SummaryCards({ stats }: { stats: ScheduledDepartureStats }) {
       variant: stats.cancelled_count > 0 ? "danger" : "muted",
     },
     {
+      label: "No Tracking",
+      value: stats.no_tracking_count.toLocaleString(),
+      variant: stats.no_tracking_count > 0 ? "warning" : "muted",
+    },
+    {
       label: "Total Arrivals",
       value: stats.total_arrivals.toLocaleString(),
       variant: "ink",
@@ -275,7 +281,7 @@ export default function TimetableComparisonPage() {
               {monitor.stop_name || `Stop ${monitor.stop_id}`}
             </h1>
             <span className="muted" style={{ marginLeft: "var(--space-sm)" }}>
-              Timetable Comparison
+              Scheduled Departure Stats
             </span>
           </div>
         </div>

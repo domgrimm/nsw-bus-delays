@@ -16,13 +16,15 @@ const COLORS: Record<string, string> = {
   on_time: "var(--color-status-success)",
   delayed: "var(--color-status-danger)",
   cancelled: "var(--color-status-muted)",
+  no_tracking: "var(--color-status-warning)",
 };
 
-const LABEL_KEYS: Record<string, "early" | "on_time" | "delayed" | "cancelled"> = {
+const LABEL_KEYS: Record<string, "early" | "on_time" | "delayed" | "cancelled" | "no_tracking"> = {
   Early: "early",
   "On Time": "on_time",
   Delayed: "delayed",
   Cancelled: "cancelled",
+  "No Tracking": "no_tracking",
 };
 
 export default function StatusPieChart({ stats }: { stats: DelayStats }) {
@@ -31,6 +33,7 @@ export default function StatusPieChart({ stats }: { stats: DelayStats }) {
     { name: "On Time", value: stats.on_time_count },
     { name: "Delayed", value: stats.delayed_count },
     { name: "Cancelled", value: stats.cancelled_count },
+    { name: "No Tracking", value: stats.no_tracking_count },
   ].filter((d) => d.value > 0);
 
   if (data.length === 0) {

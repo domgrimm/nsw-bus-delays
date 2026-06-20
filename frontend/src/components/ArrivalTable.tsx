@@ -33,6 +33,7 @@ function badgeVariant(status: string): StatusVariant {
   if (normalized === "delayed") return "danger";
   if (normalized === "early") return "primary";
   if (normalized === "cancelled") return "muted";
+  if (normalized === "no_tracking") return "warning";
   return "success";
 }
 

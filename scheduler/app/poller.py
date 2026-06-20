@@ -119,6 +119,9 @@ async def poll_active_monitors():
                 if dep.is_cancelled:
                     delay = 0
                     status = ArrivalStatus.cancelled
+                elif not dep.has_tracking:
+                    delay = 0
+                    status = ArrivalStatus.no_tracking
                 else:
                     delay = int((estimated - scheduled).total_seconds())
                     status = compute_status(delay)
@@ -135,7 +138,7 @@ async def poll_active_monitors():
                 if existing:
                     if existing.actual_arrival == estimated:
                         continue
-                    if estimated == scheduled and not dep.is_cancelled:
+                    if estimated == scheduled and not dep.is_cancelled and dep.has_tracking:
                         continue
                     existing.actual_arrival = estimated
                     existing.delay_seconds = delay

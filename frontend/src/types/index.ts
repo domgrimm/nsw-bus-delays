@@ -45,6 +45,7 @@ export interface DailyStats {
   early_count: number;
   on_time_count: number;
   delayed_count: number;
+  no_tracking_count: number;
   average_delay_seconds: number;
 }
 
@@ -86,6 +87,7 @@ export interface DelayStats {
   on_time_count: number;
   delayed_count: number;
   cancelled_count: number;
+  no_tracking_count: number;
   average_delay_seconds: number;
   max_delay_seconds: number;
   on_time_percentage: number;
@@ -103,7 +105,7 @@ export interface ArrivalRecord {
   scheduled_arrival: string;
   actual_arrival: string;
   delay_seconds: number;
-  status: "early" | "on_time" | "delayed" | "cancelled";
+  status: "early" | "on_time" | "delayed" | "cancelled" | "no_tracking";
   recorded_at: string;
 }
 
@@ -126,6 +128,7 @@ export interface ScheduledDepartureStats {
   on_time_count: number;
   delayed_count: number;
   cancelled_count: number;
+  no_tracking_count: number;
   average_delay_seconds: number;
   max_delay_seconds: number;
   on_time_percentage: number;
@@ -137,4 +140,16 @@ export interface ScheduledDepartureStats {
     status: string;
     recorded_at: string;
   }[];
+}
+
+export interface LiveDeparture {
+  trip_id: string;
+  route_id: string;
+  route_number: string;
+  description: string;
+  destination_name: string;
+  scheduled_departure: string;
+  estimated_departure: string | null;
+  is_cancelled: boolean;
+  has_tracking: boolean;
 }

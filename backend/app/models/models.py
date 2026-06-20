@@ -24,6 +24,7 @@ class ArrivalStatus(str, enum.Enum):
     on_time = "on_time"
     delayed = "delayed"
     cancelled = "cancelled"
+    no_tracking = "no_tracking"
 
 
 class BusStop(Base):
