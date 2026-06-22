@@ -210,7 +210,7 @@ function DashboardInner() {
             aria-expanded={showMap}
             aria-controls="stop-map-panel"
           >
-            {showMap ? "▾ Hide Map" : "▸ Show Map"}
+            {showMap ? "\u25BE Hide Map" : "\u25B8 Show Map"}
           </button>
           <PeriodSelector />
         </div>

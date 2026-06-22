@@ -110,6 +110,17 @@ class ArrivalRecordResponse(BaseModel):
         from_attributes = True
 
 
+class ServiceAlertResponse(BaseModel):
+    id: str
+    description: str
+    priority: str = ""
+    alert_type: str = ""
+    title: str = ""
+    posted_at: str = ""
+    updated_at: str = ""
+    url: str = ""
+
+
 class LiveDepartureResponse(BaseModel):
     trip_id: str
     route_id: str

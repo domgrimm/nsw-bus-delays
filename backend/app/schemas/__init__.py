@@ -9,6 +9,7 @@ from app.schemas.schemas import (
     MonitorCreate,
     MonitorResponse,
     PercentileStats,
+    ServiceAlertResponse,
     StopResponse,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "MonitorCreate",
     "MonitorResponse",
     "PercentileStats",
+    "ServiceAlertResponse",
     "StopResponse",
 ]

@@ -30,8 +30,8 @@ services:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""]
       interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 10s
+      retries: 20
+      start_period: 15s
 
   scheduler:
     image: ghcr.io/domgrimm/nsw-bus-delays-scheduler:${TAG:-latest}

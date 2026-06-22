@@ -11,6 +11,7 @@ from app.schemas import (
     LiveDepartureResponse,
     MonitorCreate,
     MonitorResponse,
+    ServiceAlertResponse,
 )
 from app.services.stats import compute_bunching, compute_stats
 from app.tf_nsw_client import TfNSWClient
@@ -389,4 +390,42 @@ async def get_departures(
             has_tracking=d.has_tracking,
         )
         for d in departures
+    ]
+
+
+@router.get("/monitors/{monitor_id}/alerts", response_model=list[ServiceAlertResponse])
+async def get_monitor_alerts(
+    monitor_id: str,
+    db: Session = Depends(get_db),
+):
+    trip = (
+        db.query(MonitoredTrip)
+        .options(joinedload(MonitoredTrip.stop), joinedload(MonitoredTrip.route))
+        .filter(MonitoredTrip.id == monitor_id)
+        .first()
+    )
+    if not trip:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+
+    client = TfNSWClient()
+    try:
+        alerts = await client.get_service_alerts(
+            stop_id=trip.stop.stop_id,
+            route_id=trip.route.route_id,
+        )
+    finally:
+        await client.close()
+
+    return [
+        ServiceAlertResponse(
+            id=a.id,
+            description=a.description,
+            priority=a.priority,
+            alert_type=a.alert_type,
+            title=a.title,
+            posted_at=a.posted_at,
+            updated_at=a.updated_at,
+            url=a.url,
+        )
+        for a in alerts
     ]

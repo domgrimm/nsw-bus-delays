@@ -9,6 +9,7 @@ import type {
   MonitorCreate,
   Period,
   ScheduledDepartureStats,
+  ServiceAlert,
   TimetableResponse,
 } from "@/types";
 
@@ -151,4 +152,10 @@ export async function getMonitorDepartures(
   return fetchJson<LiveDeparture[]>(
     `/api/monitors/${id}/departures?max_results=${maxResults}`,
   );
+}
+
+export async function getMonitorAlerts(
+  id: string,
+): Promise<ServiceAlert[]> {
+  return fetchJson<ServiceAlert[]>(`/api/monitors/${id}/alerts`);
 }

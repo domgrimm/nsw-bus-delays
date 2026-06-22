@@ -31,6 +31,18 @@ class TfNSWDeparture:
     has_tracking: bool = True
 
 
+@dataclass
+class TfNSWServiceAlert:
+    id: str
+    description: str
+    priority: str = ""
+    alert_type: str = ""
+    title: str = ""
+    posted_at: str = ""
+    updated_at: str = ""
+    url: str = ""
+
+
 class TfNSWClient:
     def __init__(self):
         self.api_key = settings.tfnsw_api_key
@@ -284,6 +296,60 @@ class TfNSWClient:
                                 for s in seq
                             ]
         return best
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        reraise=True,
+    )
+    async def get_service_alerts(
+        self, stop_id: str, route_id: str | None = None
+    ) -> list[TfNSWServiceAlert]:
+        params = self._dm_params(stop_id=stop_id, limit=60)
+        if route_id:
+            params["routeId"] = route_id
+        resp = await self._client.get("departure_mon", params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+        seen: set[str] = set()
+        alerts: list[TfNSWServiceAlert] = []
+
+        def _parse_info(info: dict) -> TfNSWServiceAlert | None:
+            info_id = info.get("id", "")
+            if not info_id or info_id in seen:
+                return None
+            seen.add(info_id)
+            props = info.get("properties", {})
+            title = (
+                info.get("urlText")
+                or info.get("subtitle")
+                or props.get("smsText")
+                or ""
+            )
+            return TfNSWServiceAlert(
+                id=info_id,
+                description=info.get("content") or "",
+                priority=info.get("priority", ""),
+                alert_type=info.get("type", ""),
+                title=title,
+                posted_at="",
+                updated_at="",
+                url=info.get("url", ""),
+            )
+
+        for info in data.get("infos", []):
+            alert = _parse_info(info)
+            if alert:
+                alerts.append(alert)
+
+        for ev in data.get("stopEvents", []):
+            for info in ev.get("infos", []):
+                alert = _parse_info(info)
+                if alert:
+                    alerts.append(alert)
+
+        return alerts
 
     async def close(self):
         await self._client.aclose()

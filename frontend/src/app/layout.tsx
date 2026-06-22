@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Providers from "./providers";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Header from "@/components/Header";
+import AlertBarWrapper from "@/components/AlertBarWrapper";
 import { ToastProvider } from "@/context/toast";
 import "./globals.css";
 
@@ -22,6 +23,7 @@ export default function RootLayout({
         <Providers>
           <ToastProvider>
             <Header />
+            <AlertBarWrapper />
             <main>
               <ErrorBoundary>{children}</ErrorBoundary>
             </main>

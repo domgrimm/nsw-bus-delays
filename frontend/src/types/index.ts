@@ -153,3 +153,14 @@ export interface LiveDeparture {
   is_cancelled: boolean;
   has_tracking: boolean;
 }
+
+export interface ServiceAlert {
+  id: string;
+  description: string;
+  priority: string;
+  alert_type: string;
+  title: string;
+  posted_at: string;
+  updated_at: string;
+  url: string;
+}
