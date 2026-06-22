@@ -41,8 +41,15 @@ export default function StopMap({
     mapRef.current = map;
     setMapReady(true);
 
+    const sizeTimer = setTimeout(() => {
+      if (!cancelled && mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    }, 100);
+
     return () => {
       cancelled = true;
+      clearTimeout(sizeTimer);
       mapRef.current?.remove();
       mapRef.current = null;
     };

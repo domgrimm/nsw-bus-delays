@@ -175,10 +175,26 @@ class TfNSWClient:
         )
         resp.raise_for_status()
         data = resp.json()
+
+        if not data.get("stopEvents"):
+            for loc in data.get("locations", []):
+                resolved_id = loc.get("id", "")
+                if resolved_id and resolved_id != stop_id:
+                    logger.info(
+                        "No departures for stop %s, retrying with resolved stop %s",
+                        stop_id, resolved_id,
+                    )
+                    return await self.get_departures(
+                        resolved_id, route_id=route_id,
+                        max_results=max_results, lookback_minutes=lookback_minutes,
+                    )
+
         departures: list[TfNSWDeparture] = []
         for ev in data.get("stopEvents", []):
             t = ev.get("transportation", {})
             route_number = t.get("number", "")
+            if route_id and route_number != route_id:
+                continue
             scheduled = ev.get("departureTimeBaseTimetable", "")
             estimated = ev.get("departureTimeEstimated") or ev.get("departureTimePlanned")
             departures.append(

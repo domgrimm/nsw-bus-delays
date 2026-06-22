@@ -390,6 +390,7 @@ async def get_departures(
             has_tracking=d.has_tracking,
         )
         for d in departures
+        if d.route_id == trip.route.route_id
     ]
 
 

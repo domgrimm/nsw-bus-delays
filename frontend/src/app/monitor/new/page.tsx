@@ -176,12 +176,11 @@ function RouteFlow({
         </button>
 
         {routeStops.length > 0 && (
-          <div className="map-container map-container--inline">
-            <MapExplorer
-              stops={routeStops.map((s) => ({ ...s, id: s.id || "" }))}
-              onSelect={onStopSelect}
-            />
-          </div>
+          <MapExplorer
+            className="map-container map-container--inline"
+            stops={routeStops.map((s) => ({ ...s, id: s.id || "" }))}
+            onSelect={onStopSelect}
+          />
         )}
 
         <p className="muted">Select a stop on this route:</p>
@@ -239,13 +238,11 @@ function MapFlow({
           </button>
         )}
       </div>
-      <div className="map-container">
-        <MapExplorer
-          stops={displayedStops}
-          onSelect={onStopSelect}
-          onSearchArea={handleSearchArea}
-        />
-      </div>
+      <MapExplorer
+        stops={displayedStops}
+        onSelect={onStopSelect}
+        onSearchArea={handleSearchArea}
+      />
       {displayedStops.length === 0 && query.length >= 2 && (
         <p className="muted">No stops found. Try a different search.</p>
       )}

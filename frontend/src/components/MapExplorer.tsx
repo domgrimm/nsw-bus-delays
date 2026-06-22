@@ -11,10 +11,12 @@ export default function MapExplorer({
   stops,
   onSelect,
   onSearchArea,
+  className,
 }: {
   stops: BusStop[];
   onSelect: (stop: BusStop) => void;
   onSearchArea?: (lat: number, lng: number) => void;
+  className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -66,8 +68,15 @@ export default function MapExplorer({
     mapRef.current = map;
     setMapReady(true);
 
+    const sizeTimer = setTimeout(() => {
+      if (!cancelled && mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    }, 100);
+
     return () => {
       cancelled = true;
+      clearTimeout(sizeTimer);
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -111,5 +120,5 @@ export default function MapExplorer({
     }
   }, [stops, mapReady]);
 
-  return <div ref={containerRef} className="map-container" />;
+  return <div ref={containerRef} className={className ?? "map-container"} />;
 }
