@@ -115,6 +115,45 @@ header nav a:focus-visible {
   outline-offset: 2px;
 }
 
+/* === Footer === */
+footer {
+  background: var(--color-ink);
+  border-top: 1px solid var(--color-border);
+  padding: 0.75rem var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footer-github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-surface);
+  opacity: 0.75;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.footer-github-link:hover {
+  opacity: 1;
+  text-decoration: none;
+  color: var(--color-surface);
+}
+
+.footer-github-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 main {
   max-width: 1200px;
   margin: 0 auto;
